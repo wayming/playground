@@ -8,6 +8,7 @@
 #include <cstring>
 #include <mutex>
 #include <thread>
+#include <future>
 
 using namespace std;
 
@@ -42,106 +43,142 @@ struct Result {
     } diagnostics;
 };
 
-
-
-
-
 class RetCodeGeneratorInterface {
 public:
     virtual vector<string> generate(const string &input, int sample, int seed) = 0;
 };
 
 class RetCodeGenerator : public RetCodeGeneratorInterface {
-public:
-    RetCodeGenerator() {}
-    vector<string> generate(const string &input, int sample, int seed) override {
-        this->setProbability(input, seed);
-        vector<string> results;
-        for (int i = 0; i < sample; i++) {
-            results.push_back(noisyEval(input, seed));
-        }
-        return results;
-    }
-
-protected:
-    void setProbability(const string &input, int seed) {
-        srand(time(NULL));
-        this->p1 = genProbability(input + "0", seed);
-        this->p2 = genProbability(input + "1", seed);
-        this->p3 = genProbability(input + "2", seed);
-        this->p4 = genProbability(input + "3", seed);
-        this->total = p1 + p2 + p3 + p4;
-    }
-    string noisyEval(const string &input, int seed) {
-
-        // simulate delay
-        this_thread::sleep_for(chrono::nanoseconds(10));
-
-
-        int r = rand() % total;
-        if (r < p1) {
-            return "OK";
-        } else if (r < p1 + p2) {
-            return "FAIL";
-        } else if (r < p1 + p2 + p3) {
-            return "Timeout";
-        } else {
-            return "Retry";
-        }
-    }
-
-    int genProbability (const string &input, int seed) {
-
-        long sum = seed;
-        for (int i = 0; i < input.length(); i++) {
-            sum = (sum * 31 + input[i]) % 1000000007;
-        }
-        
-        return sum % 100 + 1;      
-    }
-    int p1;
-    int p2;
-    int p3;
-    int p4;
-    int total;
-
-};
-
-class ParallelRetCodeGenerator : public RetCodeGenerator {
-public:
-    ParallelRetCodeGenerator(int max_workers) : max_workers(max_workers) {}
-    vector<string> generate(const string &input, int sample, int seed) override {
-        this->setProbability(input, seed);
-        vector<string> results;
-        mutex results_mutex;
-        vector<thread> threads;
-        int remaining_samples = sample;
-        for (int i = 0; i < max_workers; i++) {
-            int thread_samples;
-            if (i == max_workers - 1) {
-                thread_samples = remaining_samples;
-            } else {
-                thread_samples = sample / max_workers;
+    public:
+        RetCodeGenerator() {}
+        vector<string> generate(const string &input, int sample, int seed) override {
+            this->setProbability(input, seed);
+            vector<string> results;
+            for (int i = 0; i < sample; i++) {
+                results.push_back(noisyEval(input, seed));
             }
-            thread t([=, &results, &results_mutex]() {
-                for (int j = 0; j < thread_samples; j++) {
-                    lock_guard<mutex> lock(results_mutex);
-                    results.push_back(noisyEval(input, seed));
-                }
-            });
-            threads.push_back(move(t));
-            remaining_samples -= thread_samples;
-        }
-        for (auto &t : threads) {
-            t.join();
+            return results;
         }
 
-        return results;
-    }
-private:
-    int max_workers;
+    protected:
+        void setProbability(const string &input, int seed) {
+            srand(time(NULL));
+            this->p1 = genProbability(input + "0", seed);
+            this->p2 = genProbability(input + "1", seed);
+            this->p3 = genProbability(input + "2", seed);
+            this->p4 = genProbability(input + "3", seed);
+            this->total = p1 + p2 + p3 + p4;
+        }
+        string noisyEval(const string &input, int seed) {
+
+            // simulate delay
+            this_thread::sleep_for(chrono::nanoseconds(10));
+
+
+            int r = rand() % total;
+            if (r < p1) {
+                return "OK";
+            } else if (r < p1 + p2) {
+                return "FAIL";
+            } else if (r < p1 + p2 + p3) {
+                return "Timeout";
+            } else {
+                return "Retry";
+            }
+        }
+
+        int genProbability (const string &input, int seed) {
+
+            long sum = seed;
+            for (int i = 0; i < input.length(); i++) {
+                sum = (sum * 31 + input[i]) % 1000000007;
+            }
+            
+            return sum % 100 + 1;      
+        }
+        int p1;
+        int p2;
+        int p3;
+        int p4;
+        int total;
+
 };
 
+class SimpleRetCodeGenerator : public RetCodeGenerator {
+    public:
+        SimpleRetCodeGenerator(int max_workers) : max_workers(max_workers) {}
+        vector<string> generate(const string &input, int sample, int seed) override {
+            this->setProbability(input, seed);
+            vector<string> results;
+            mutex results_mutex;
+            vector<thread> threads;
+            int remaining_samples = sample;
+            for (int i = 0; i < max_workers; i++) {
+                int thread_samples;
+                if (i == max_workers - 1) {
+                    thread_samples = remaining_samples;
+                } else {
+                    thread_samples = sample / max_workers;
+                }
+                thread t([=, &results, &results_mutex]() {
+                    for (int j = 0; j < thread_samples; j++) {
+                        lock_guard<mutex> lock(results_mutex);
+                        results.push_back(noisyEval(input, seed));
+                    }
+                });
+                threads.push_back(move(t));
+                remaining_samples -= thread_samples;
+            }
+            for (auto &t : threads) {
+                t.join();
+            }
+
+            return results;
+        }
+    private:
+        int max_workers;
+};
+
+
+class AsyncRetCodeGenerator : public RetCodeGenerator {
+public:
+        AsyncRetCodeGenerator(int max_workers) : max_workers(max_workers) {}
+        vector<string> generate(const string &input, int sample, int seed) override {
+            this->setProbability(input, seed);
+            vector<string> results;
+            vector<future<vector<string>>> futures;
+                int remaining_samples = sample;
+                for (int i = 0; i < max_workers; i++) {
+                    int thread_samples;
+                    if (i == max_workers - 1) {
+                        thread_samples = remaining_samples;
+                    } else {
+                        thread_samples = sample / max_workers;
+                    }
+                    futures.push_back(async(launch::async, &AsyncRetCodeGenerator::noisyEvalGroup, this, input, seed, thread_samples));
+                    remaining_samples -= thread_samples;
+                }
+                for (auto &f : futures) {
+                    if (!f.valid()) {
+                        throw std::runtime_error("Invalid future!");
+                    }
+                    vector<string> thread_results = f.get();
+                    results.insert(results.end(), thread_results.begin(), thread_results.end());
+                }
+                return results;
+            }
+    private:
+        vector<string> noisyEvalGroup(const string &input, int seed, int samples) {
+            vector<string> results;
+            for (int i = 0; i < samples; i++) {
+                results.push_back(noisyEval(input, seed));
+            }
+            return results;
+        }
+    private:
+        int max_workers;
+};
+    
 class Strategy {
 public:
     virtual string eval(const vector<string> &input) = 0;
@@ -293,7 +330,7 @@ int main(int argc, char *argv[]) {
     if (max_workers == 1) {
         retCodeGenerator = make_unique<RetCodeGenerator>();
     } else {
-        retCodeGenerator = make_unique<ParallelRetCodeGenerator>(max_workers);
+        retCodeGenerator = make_unique<AsyncRetCodeGenerator>(max_workers);
     }
     auto stablise_result_generator = StabliseResultGenerator(move(retCodeGenerator), StragetyFactory::create(strategy), samples, seed, max_workers, numeric);
     auto result = stablise_result_generator.generate(query);
