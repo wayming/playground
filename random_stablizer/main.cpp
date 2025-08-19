@@ -42,15 +42,6 @@ struct Result {
     } diagnostics;
 };
 
-int gen_probability (const string &input, int seed) {
-
-    long sum = seed;
-    for (int i = 0; i < input.length(); i++) {
-        sum = (sum * 31 + input[i]) % 1000000007;
-    }
-    
-    return sum % 100 + 1;      
-}
 
 
 
@@ -64,6 +55,7 @@ class RetCodeGenerator : public RetCodeGeneratorInterface {
 public:
     RetCodeGenerator() {}
     vector<string> generate(const string &input, int sample, int seed) override {
+        this->setProbability(input, seed);
         vector<string> results;
         for (int i = 0; i < sample; i++) {
             results.push_back(noisyEval(input, seed));
@@ -72,17 +64,20 @@ public:
     }
 
 protected:
+    void setProbability(const string &input, int seed) {
+        srand(time(NULL));
+        this->p1 = genProbability(input + "0", seed);
+        this->p2 = genProbability(input + "1", seed);
+        this->p3 = genProbability(input + "2", seed);
+        this->p4 = genProbability(input + "3", seed);
+        this->total = p1 + p2 + p3 + p4;
+    }
     string noisyEval(const string &input, int seed) {
 
         // simulate delay
-        this_thread::sleep_for(chrono::milliseconds(100));
+        this_thread::sleep_for(chrono::nanoseconds(10));
 
-        srand(time(NULL));
-        int p1 = genProbability(input + "0", seed);
-        int p2 = genProbability(input + "1", seed);
-        int p3 = genProbability(input + "2", seed);
-        int p4 = genProbability(input + "3", seed);
-        int total = p1 + p2 + p3 + p4;
+
         int r = rand() % total;
         if (r < p1) {
             return "OK";
@@ -104,13 +99,19 @@ protected:
         
         return sum % 100 + 1;      
     }
+    int p1;
+    int p2;
+    int p3;
+    int p4;
+    int total;
 
 };
 
 class ParallelRetCodeGenerator : public RetCodeGenerator {
 public:
     ParallelRetCodeGenerator(int max_workers) : max_workers(max_workers) {}
-        vector<string> generate(const string &input, int sample, int seed) override {
+    vector<string> generate(const string &input, int sample, int seed) override {
+        this->setProbability(input, seed);
         vector<string> results;
         mutex results_mutex;
         vector<thread> threads;
