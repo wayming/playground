@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 #include <cstring>
+#include <mutex>
+#include <thread>
 
 using namespace std;
 
@@ -51,28 +53,93 @@ int gen_probability (const string &input, int seed) {
 }
 
 
-string noisy_eval(const string &input) {
-    int p1 = gen_probability(input + "0", 0);
-    int p2 = gen_probability(input + "1", 1);
-    int p3 = gen_probability(input + "2", 2);
-    int p4 = gen_probability(input + "3", 3);
-    int total = p1 + p2 + p3 + p4;
-    int r = rand() % total;
-    if (r < p1) {
-        cout << "probabilities: " << (double)p1/total << endl;
-        return "OK";
-    } else if (r < p1 + p2) {
-        cout << "probabilities: " << (double)p2/total << endl;
-        return "FAIL";
-    } else if (r < p1 + p2 + p3) {
-        cout << "probabilities: " << (double)p3/total << endl;
-        return "Timeout";
-    } else {
-        cout << "probabilities: " << (double)p4/total << endl;
-        return "Retry";
-    }
-}
 
+
+class RetCodeGeneratorInterface {
+public:
+    virtual vector<string> generate(const string &input, int sample, int seed) = 0;
+};
+
+class RetCodeGenerator : public RetCodeGeneratorInterface {
+public:
+    RetCodeGenerator() {}
+    vector<string> generate(const string &input, int sample, int seed) override {
+        vector<string> results;
+        for (int i = 0; i < sample; i++) {
+            results.push_back(noisyEval(input, seed));
+        }
+        return results;
+    }
+
+protected:
+    string noisyEval(const string &input, int seed) {
+
+        // simulate delay
+        this_thread::sleep_for(chrono::milliseconds(100));
+
+        srand(time(NULL));
+        int p1 = genProbability(input + "0", seed);
+        int p2 = genProbability(input + "1", seed);
+        int p3 = genProbability(input + "2", seed);
+        int p4 = genProbability(input + "3", seed);
+        int total = p1 + p2 + p3 + p4;
+        int r = rand() % total;
+        if (r < p1) {
+            return "OK";
+        } else if (r < p1 + p2) {
+            return "FAIL";
+        } else if (r < p1 + p2 + p3) {
+            return "Timeout";
+        } else {
+            return "Retry";
+        }
+    }
+
+    int genProbability (const string &input, int seed) {
+
+        long sum = seed;
+        for (int i = 0; i < input.length(); i++) {
+            sum = (sum * 31 + input[i]) % 1000000007;
+        }
+        
+        return sum % 100 + 1;      
+    }
+
+};
+
+class ParallelRetCodeGenerator : public RetCodeGenerator {
+public:
+    ParallelRetCodeGenerator(int max_workers) : max_workers(max_workers) {}
+        vector<string> generate(const string &input, int sample, int seed) override {
+        vector<string> results;
+        mutex results_mutex;
+        vector<thread> threads;
+        int remaining_samples = sample;
+        for (int i = 0; i < max_workers; i++) {
+            int thread_samples;
+            if (i == max_workers - 1) {
+                thread_samples = remaining_samples;
+            } else {
+                thread_samples = sample / max_workers;
+            }
+            thread t([=, &results, &results_mutex]() {
+                for (int j = 0; j < thread_samples; j++) {
+                    lock_guard<mutex> lock(results_mutex);
+                    results.push_back(noisyEval(input, seed));
+                }
+            });
+            threads.push_back(move(t));
+            remaining_samples -= thread_samples;
+        }
+        for (auto &t : threads) {
+            t.join();
+        }
+
+        return results;
+    }
+private:
+    int max_workers;
+};
 
 class Strategy {
 public:
@@ -113,7 +180,8 @@ public:
 
 class StabliseResultGenerator {
 public:
-    StabliseResultGenerator(unique_ptr<Strategy> strategy, int samples, int seed, int max_workers, bool numeric) {
+    StabliseResultGenerator(unique_ptr<RetCodeGeneratorInterface> code_generator, unique_ptr<Strategy> strategy, int samples, int seed, int max_workers, bool numeric) {
+        this->code_generator = move(code_generator);
         this->strategy = move(strategy);
         this->samples = samples;
         this->seed = seed;
@@ -123,12 +191,8 @@ public:
     
     Result generate(const string &query) {
         auto begin = chrono::steady_clock::now();
-        srand(seed);
-        vector<string> raw_results;
-        for (int i = 0; i < samples; i++) {
-            raw_results.push_back(noisy_eval(query));
-        }
 
+        auto raw_results = code_generator->generate(query, samples, seed);
         result.diagnostics.counts = counts(raw_results);
         result.diagnostics.seed = seed;
         result.diagnostics.max_workers = max_workers;
@@ -136,7 +200,7 @@ public:
         result.final = strategy->eval(raw_results);
         result.strategy = strategy->name();
         result.samples = samples;
-        result.agreement_rate = result.diagnostics.counts[result.final] / samples;
+        result.agreement_rate = double(result.diagnostics.counts[result.final]) / samples;
         result.unique_candidates = result.diagnostics.counts.size();
         result.outlier_rate = (result.diagnostics.counts.size() - 1) / samples;
         result.latency_ms = chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now() - begin).count();
@@ -152,6 +216,7 @@ private:
     }
 
 private:
+    unique_ptr<RetCodeGeneratorInterface> code_generator;
     unique_ptr<Strategy> strategy;
     int samples;
     int seed;
@@ -223,7 +288,13 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    auto stablise_result_generator = StabliseResultGenerator(StragetyFactory::create(strategy), samples, seed, max_workers, numeric);
+    unique_ptr<RetCodeGeneratorInterface> retCodeGenerator;
+    if (max_workers == 1) {
+        retCodeGenerator = make_unique<RetCodeGenerator>();
+    } else {
+        retCodeGenerator = make_unique<ParallelRetCodeGenerator>(max_workers);
+    }
+    auto stablise_result_generator = StabliseResultGenerator(move(retCodeGenerator), StragetyFactory::create(strategy), samples, seed, max_workers, numeric);
     auto result = stablise_result_generator.generate(query);
     dump_result(result);
 
