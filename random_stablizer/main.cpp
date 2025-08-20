@@ -9,6 +9,10 @@
 #include <mutex>
 #include <thread>
 #include <future>
+#include <condition_variable>
+#include <queue>
+#include <functional>
+#include <random>
 
 using namespace std;
 
@@ -178,7 +182,95 @@ public:
     private:
         int max_workers;
 };
+
+struct Task {
+    string input;
+    int seed;
+    int samples;
+};
+class QueueRetCodeGenerator : public RetCodeGenerator {
+public:
+    QueueRetCodeGenerator(int max_workers) : max_workers(max_workers) {
+        for (int i = 0; i < max_workers; i++) {
+            thread t([this]() {
+                while (!stop) {
+                    string input;
+                    int seed;
+                    int samples;
+                    {
+                        unique_lock<mutex> lock(in_queue_mutex);
+                        start_cv.wait(lock, [this]() { return !in_queue.empty() || stop; });
     
+                        if (stop) {
+                            break;
+                        }
+    
+                        if (in_queue.empty()) {
+                            continue;
+                        }
+                        auto &task = in_queue.front();
+                        if (task.samples == 0) {
+                            in_queue.pop();
+                            result_cv.notify_one();
+                            continue;
+                        }
+    
+                        string input = task.input;
+                        int seed = task.seed;
+                        task.samples--;
+
+                        lock.unlock();
+                    }
+
+                    {
+                        lock_guard<mutex> lock(out_queue_mutex);
+                        string result = noisyEval(input, seed);
+                        out_queue.push(result);
+                    }
+                }
+            });
+            threads.push_back(move(t));
+        }
+    }
+
+    ~QueueRetCodeGenerator() {
+        stop = true;
+        start_cv.notify_all();
+        for (auto &t : threads) {
+            t.join();
+        }
+    }
+    vector<string> generate(const string &input, int sample, int seed) override {
+        this->setProbability(input, seed);
+        {
+            unique_lock<mutex> lock(in_queue_mutex);
+            in_queue.push(Task{input, seed, sample});
+            start_cv.notify_all();
+            lock.unlock();
+        }
+        vector<string> results;
+        {
+            unique_lock<mutex> lock(out_queue_mutex);
+            result_cv.wait(lock, [this]() { return !out_queue.empty(); });
+            while (!out_queue.empty()) {
+                results.push_back(out_queue.front());
+                out_queue.pop();
+            }
+        }
+        return results;
+    }
+private:
+    bool stop = false;
+    int max_workers;
+    vector<thread> threads;
+    condition_variable start_cv;
+    condition_variable result_cv;
+    mutex in_queue_mutex;
+    mutex out_queue_mutex;
+    queue<Task> in_queue;
+    queue<string> out_queue;
+};
+
 class Strategy {
 public:
     virtual string eval(const vector<string> &input) = 0;
@@ -298,8 +390,9 @@ void dump_result(const Result &result) {
 // --seed 123                  (default: 0)
 // --max-workers 4             (default: hardware_concurrency)
 // --numeric                   (switch oracle to numeric mode)
+// --parallel                  (use parallel mode, default:no)
 void usage(){
-    cout << "Usage: " << " --query <query> --strategy <strategy> --samples <samples> --seed <seed> --max-workers <max-workers> --numeric" << endl;
+    cout << "Usage: " << " --query <query> --strategy <strategy> --samples <samples> --seed <seed> --max-workers <max-workers> --numeric --parallel <no|thread|async|queue>" << endl;
     exit(1);
 }
 
@@ -310,6 +403,7 @@ int main(int argc, char *argv[]) {
     int seed = 0;
     int max_workers = thread::hardware_concurrency();
     bool numeric = false;
+    string parallel = "no";
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--query") == 0) {
             query = argv[i + 1];
@@ -323,14 +417,20 @@ int main(int argc, char *argv[]) {
             max_workers = atoi(argv[i + 1]);
         } else if (strcmp(argv[i], "--numeric") == 0) {
             numeric = true;
+        } else if (strcmp(argv[i], "--parallel") == 0) {
+            parallel = argv[i + 1];
         }
     }
 
     unique_ptr<RetCodeGeneratorInterface> retCodeGenerator;
-    if (max_workers == 1) {
+    if (parallel == "no") {
         retCodeGenerator = make_unique<RetCodeGenerator>();
-    } else {
+    } else if (parallel == "thread") {
         retCodeGenerator = make_unique<AsyncRetCodeGenerator>(max_workers);
+    } else if (parallel == "async") {
+        retCodeGenerator = make_unique<AsyncRetCodeGenerator>(max_workers);
+    } else if (parallel == "queue") {
+        retCodeGenerator = make_unique<QueueRetCodeGenerator>(max_workers);
     }
     auto stablise_result_generator = StabliseResultGenerator(move(retCodeGenerator), StragetyFactory::create(strategy), samples, seed, max_workers, numeric);
     auto result = stablise_result_generator.generate(query);
