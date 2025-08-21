@@ -34,6 +34,7 @@ map<log_level, string> log_level_to_string = {
     {ERROR, "ERROR"}
 };
 
+// log message
 class LogMessage {
     public:
         LogMessage(string message, log_level level, chrono::time_point<chrono::system_clock> timestamp, thread::id thread_id) {
@@ -65,6 +66,7 @@ class LogMessage {
         thread::id thread_id;
 };
 
+// thread-safe logger
 class ThreadLogger {
 public:
     ThreadLogger() {}
@@ -92,6 +94,7 @@ private:
     bool stop = false;
 };
 
+// print usage
 void usage() {
     cout << "Usage: ./thread_logger <level> <message> <threads> <repeat>" << endl;
     cout << "Level: ";
@@ -123,6 +126,7 @@ int main(int argc, char *argv[]) {
         thread t([=, &logger]() -> void {
             srand(time(NULL));
             for (int j = 0; j < repeat; j++) {
+                this_thread::sleep_for(chrono::milliseconds(rand() % 5));
                 logger.log(LogMessage(message + to_string(rand()), option_to_log_level(level), chrono::system_clock::now(), this_thread::get_id()));
             }
         });
