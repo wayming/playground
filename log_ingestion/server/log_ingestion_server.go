@@ -1,4 +1,6 @@
-// simple go web server hello world
+/*
+Simple go web server to receive logs and store them in memory
+*/
 package main
 
 import (

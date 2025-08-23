@@ -1,3 +1,7 @@
+/*
+Simple go client to send logs to log ingestion server
+Usage: log_ingestion_client -api Push | Dump -tenants <count> -streams <count> -logs <count>
+*/
 package main
 
 import (
