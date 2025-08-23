@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"log_ingestion/common"
@@ -16,6 +17,8 @@ import (
 type LogClient struct {
 	baseURL    string
 	httpClient *http.Client
+	counter    int
+	mutex      sync.Mutex
 }
 
 func NewLogClient(baseURL string, timeout time.Duration) *LogClient {
@@ -24,6 +27,7 @@ func NewLogClient(baseURL string, timeout time.Duration) *LogClient {
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
+		counter: 0,
 	}
 }
 
@@ -49,6 +53,10 @@ func (c *LogClient) Push(log common.Log) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
+	c.mutex.Lock()
+	c.counter++
+	fmt.Printf("Log pushed: %d\n", c.counter)
+	c.mutex.Unlock()
 	return nil
 }
 
@@ -84,7 +92,8 @@ func (c *LogClient) Dump() ([]common.Log, error) {
 	return logs, nil
 }
 
-func push_stream(logClient *LogClient, tenantID string, logCount int) {
+func push_stream(logClient *LogClient, tenantID string, streamID int, logCount int, streamDone chan bool) {
+	fmt.Printf("Pushing logs for tenant: %s stream: %d, logs: %d\n", tenantID, streamID, logCount)
 	for i := 0; i < logCount; i++ {
 		logClient.Push(common.Log{
 			TenantID:  tenantID,
@@ -93,12 +102,19 @@ func push_stream(logClient *LogClient, tenantID string, logCount int) {
 			Line:      "GET /login 200 OK",
 		})
 	}
+	streamDone <- true
 }
 
-func push_tenant(logClient *LogClient, tenantID string, logCount int) {
-	for i := 0; i < logCount; i++ {
-		go push_stream(logClient, tenantID, logCount)
+func push_tenant(logClient *LogClient, tenantID string, streamCount int, logCount int, done chan bool) {
+	fmt.Printf("Pushing logs for tenant: %s\n", tenantID)
+	streamDone := make(chan bool)
+	for i := 0; i < streamCount; i++ {
+		go push_stream(logClient, tenantID, i, logCount, streamDone)
 	}
+	for i := 0; i < streamCount; i++ {
+		<-streamDone
+	}
+	done <- true
 }
 
 var Labels []string = []string{
@@ -132,7 +148,6 @@ func main() {
 	logs := 1
 	baseURL := "http://localhost:8080"
 	timeout := time.Second
-	fmt.Println(os.Args)
 	for idx := 1; idx < len(os.Args); idx++ {
 		arg := os.Args[idx]
 		if arg == "-api" {
@@ -164,10 +179,16 @@ func main() {
 		}
 	}
 
+	fmt.Printf("Pushing logs for %d tenants, %d streams per tenant, %d logs per stream\n", tenants, streams, logs)
 	logClient := NewLogClient(baseURL, timeout)
 	if api == "Push" {
+		done := make(chan bool)
 		for i := 0; i < tenants; i++ {
-			go push_tenant(logClient, fmt.Sprintf("team-%d", i), logs)
+			go push_tenant(logClient, fmt.Sprintf("team-%d", i), streams, logs, done)
+		}
+		for i := 0; i < tenants; i++ {
+			<-done
+			fmt.Printf("%d tenants done\n", i+1)
 		}
 	} else if api == "Dump" {
 		logClient.Dump()

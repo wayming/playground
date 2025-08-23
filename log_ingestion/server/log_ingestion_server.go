@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"log_ingestion/common"
 )
+
+var count int = 0
 
 type LogStore interface {
 	Push(log common.Log)
@@ -17,11 +20,14 @@ type LogStore interface {
 }
 
 type InMemoryLogStore struct {
-	logs []common.Log
+	logs  []common.Log
+	mutex sync.Mutex
 }
 
 func (s *InMemoryLogStore) Push(log common.Log) {
+	s.mutex.Lock()
 	s.logs = append(s.logs, log)
+	s.mutex.Unlock()
 }
 
 func (s *InMemoryLogStore) Query(query string) []common.Log {
@@ -46,6 +52,8 @@ curl -X POST http://localhost:8080/api/v1/push -H "Content-Type: application/jso
 */
 func push_log_handler_closure(logStore LogStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		count++
+		fmt.Printf("Log to push: %d\n", count)
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -54,11 +62,12 @@ func push_log_handler_closure(logStore LogStore) func(w http.ResponseWriter, r *
 		log := common.Log{}
 		err = json.Unmarshal(body, &log)
 		if err != nil {
-			fmt.Println(err)
+			fmt.Printf("Error unmarshalling log: %v\n", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		logStore.Push(log)
+		fmt.Printf("Log pushed: %+v, total: %d\n", log, len(logStore.Dump()))
 		w.WriteHeader(http.StatusOK)
 	}
 }
