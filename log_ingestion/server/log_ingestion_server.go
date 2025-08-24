@@ -8,12 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sort"
 	"sync"
 
 	"log_ingestion/common"
 )
-
-var count int = 0
 
 type LogStore interface {
 	Push(log common.Log)
@@ -22,22 +21,63 @@ type LogStore interface {
 }
 
 type InMemoryLogStore struct {
-	logs  []common.Log
-	mutex sync.Mutex
+	// tenant -> label set -> logs
+	tenantedLogs  map[string]map[string]*common.LogSafe
+	tenantedMutex sync.RWMutex
+}
+
+func NewInMemoryLogStore() *InMemoryLogStore {
+	return &InMemoryLogStore{
+		tenantedLogs:  map[string]map[string]*common.LogSafe{},
+		tenantedMutex: sync.RWMutex{},
+	}
+}
+
+func (s *InMemoryLogStore) LableSetKey(labels map[string]string) string {
+	lableKeys := make([]string, 0, len(labels))
+	for key := range labels {
+		lableKeys = append(lableKeys, key)
+	}
+	sort.Strings(lableKeys)
+
+	labelSetKey := ""
+	for _, key := range lableKeys {
+		labelSetKey += fmt.Sprintf("%s=%s", key, labels[key])
+	}
+	return labelSetKey
 }
 
 func (s *InMemoryLogStore) Push(log common.Log) {
-	s.mutex.Lock()
-	s.logs = append(s.logs, log)
-	s.mutex.Unlock()
+	if _, ok := s.tenantedLogs[log.TenantID]; !ok {
+		s.tenantedMutex.Lock()
+		if _, ok := s.tenantedLogs[log.TenantID]; !ok {
+			s.tenantedLogs[log.TenantID] = map[string]*common.LogSafe{}
+		}
+		s.tenantedMutex.Unlock()
+	}
+
+	labelSetKey := s.LableSetKey(log.Labels)
+	if _, ok := s.tenantedLogs[log.TenantID][labelSetKey]; !ok {
+		s.tenantedLogs[log.TenantID][labelSetKey] = common.NewLogSafe()
+	}
+	s.tenantedLogs[log.TenantID][labelSetKey].Push(log)
 }
 
 func (s *InMemoryLogStore) Query(query string) []common.Log {
-	return s.logs
+	// TODO: implement query
+	return s.tenantedLogs[query][query].Query(query)
 }
 
 func (s *InMemoryLogStore) Dump() []common.Log {
-	return s.logs
+	logs := []common.Log{}
+	s.tenantedMutex.RLock()
+	for _, logSafe := range s.tenantedLogs {
+		for _, logSafe := range logSafe {
+			logs = append(logs, logSafe.Dump()...)
+		}
+	}
+	s.tenantedMutex.RUnlock()
+	return logs
 }
 
 /*
@@ -54,8 +94,6 @@ curl -X POST http://localhost:8080/api/v1/push -H "Content-Type: application/jso
 */
 func push_log_handler_closure(logStore LogStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		count++
-		fmt.Printf("Log to push: %d\n", count)
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -68,6 +106,12 @@ func push_log_handler_closure(logStore LogStore) func(w http.ResponseWriter, r *
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
+
+		// Override tenant ID if X-Scope-OrgID is set
+		if r.Header.Get("X-Scope-OrgID") != log.TenantID {
+			log.TenantID = r.Header.Get("X-Scope-OrgID")
+		}
+
 		logStore.Push(log)
 		fmt.Printf("Log pushed: %+v, total: %d\n", log, len(logStore.Dump()))
 		w.WriteHeader(http.StatusOK)
@@ -82,7 +126,7 @@ func dump_log_handler_closure(logStore LogStore) func(w http.ResponseWriter, r *
 }
 
 func main() {
-	logStore := &InMemoryLogStore{}
+	logStore := NewInMemoryLogStore()
 	http.HandleFunc("/api/v1/push", push_log_handler_closure(logStore))
 	http.HandleFunc("/api/v1/dump", dump_log_handler_closure(logStore))
 	http.ListenAndServe(":8080", nil)

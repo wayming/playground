@@ -47,6 +47,7 @@ func (c *LogClient) Push(log common.Log) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("User-Agent", "log-ingestion-client")
+	req.Header.Set("X-Scope-OrgID", string(log.TenantID))
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
