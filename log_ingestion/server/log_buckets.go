@@ -9,6 +9,7 @@ import (
 
 type BucketIndex struct {
 	labelsToLevel map[string]int
+	orderedLabels []string
 	mutex         sync.Mutex
 	root          *LableIndexNode
 }
@@ -16,6 +17,7 @@ type BucketIndex struct {
 func NewBucketIndex() *BucketIndex {
 	return &BucketIndex{
 		labelsToLevel: make(map[string]int),
+		orderedLabels: []string{},
 		root:          NewLableIndexNode(""),
 	}
 }
@@ -25,7 +27,8 @@ func (h *BucketIndex) AddLabel(label string) {
 		h.mutex.Lock()
 		defer h.mutex.Unlock()
 		if _, ok := h.labelsToLevel[label]; !ok {
-			h.labelsToLevel[label] = len(h.labelsToLevel)
+			h.orderedLabels = append(h.orderedLabels, label)
+			h.labelsToLevel[label] = len(h.orderedLabels)
 			h.root.Extend(label)
 		}
 	}
@@ -35,6 +38,13 @@ func (h *BucketIndex) AddLableSet(labels map[string]string) {
 	for label, _ := range labels {
 		h.AddLabel(label)
 	}
+}
+
+func (h *BucketIndex) Next(label string) string {
+	if h.labelsToLevel[label]+1 >= len(h.orderedLabels) {
+		panic("label " + label + " is the last level")
+	}
+	return h.orderedLabels[h.labelsToLevel[label]+1]
 }
 
 const DEFAULT_BUCKET_NAME = "log_ingestion_default_bucket"
@@ -59,7 +69,7 @@ func (n *LableIndexNode) Extend(label string) {
 	// if leaf node, extend to the next level and move the bucket to a default child node
 	if len(n.children) == 0 {
 		n.label = label
-		n.children[DEFAULT_BUCKET_NAME] = NewLableIndexNode(label)
+		n.children[DEFAULT_BUCKET_NAME] = NewLableIndexNode("")
 
 		// Move log bucket to default bucket
 		n.children[DEFAULT_BUCKET_NAME].logsBucket = n.logsBucket
@@ -91,7 +101,7 @@ func (n *LableIndexNode) Push(log common.Log) {
 
 	// Push to the children
 	if _, ok := n.children[childKey]; !ok {
-		n.children[childKey] = NewLableIndexNode("")
+		n.children[childKey] = NewLableIndexNode()
 	}
 	n.children[childKey].Push(log)
 }
