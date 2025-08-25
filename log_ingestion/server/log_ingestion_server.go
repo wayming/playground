@@ -27,7 +27,8 @@ curl -X POST http://localhost:8080/api/v1/push -H "Content-Type: application/jso
 func push_log_handler_closure(logStore LogStore) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
-		if err != nil 
+		if err != nil {
+			fmt.Printf("Error reading request body: %v\n", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -58,7 +59,7 @@ func dump_log_handler_closure(logStore LogStore) func(w http.ResponseWriter, r *
 }
 
 func main() {
-	logStore := NewInMemoryLogStore()
+	var logStore LogStore = NewTenantedInMemoryStore()
 	http.HandleFunc("/api/v1/push", push_log_handler_closure(logStore))
 	http.HandleFunc("/api/v1/dump", dump_log_handler_closure(logStore))
 	http.ListenAndServe(":8080", nil)

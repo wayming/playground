@@ -101,7 +101,7 @@ func (n *LableIndexNode) Push(log common.Log) {
 
 	// Push to the children
 	if _, ok := n.children[childKey]; !ok {
-		n.children[childKey] = NewLableIndexNode()
+		n.children[childKey] = NewLableIndexNode("")
 	}
 	n.children[childKey].Push(log)
 }
