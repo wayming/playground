@@ -35,6 +35,7 @@ type InMemoryLogStore struct {
 }
 type TenantedInMemoryStore struct {
 	tenantedStores map[string]*InMemoryLogStore
+	tenantedMutex  sync.RWMutex
 }
 
 func NewInMemoryLogStore() *InMemoryLogStore {
@@ -47,6 +48,7 @@ func NewInMemoryLogStore() *InMemoryLogStore {
 func NewTenantedInMemoryStore() *TenantedInMemoryStore {
 	return &TenantedInMemoryStore{
 		tenantedStores: make(map[string]*InMemoryLogStore),
+		tenantedMutex:  sync.RWMutex{},
 	}
 }
 
@@ -57,18 +59,21 @@ func (s *InMemoryLogStore) addNewBucket(index map[string]string) *LogBucket {
 	fmt.Println("Adding new bucket for key ", index)
 	bucket := s.findBucketsExactMatchUnsafe(index)
 	if bucket != nil {
+		fmt.Println("Found exact match bucket for key ", index)
 		return bucket
 	}
 	s.logBuckets = append(s.logBuckets, *NewLogBucket(index))
+	fmt.Println("All buckets: ", s.logBuckets)
 	return &s.logBuckets[len(s.logBuckets)-1]
 }
 
 func (s *InMemoryLogStore) findBucketsExactMatchUnsafe(index map[string]string) *LogBucket {
-	for _, bucket := range s.logBuckets {
+	for i := range s.logBuckets {
+		bucket := &s.logBuckets[i]
 		if len(bucket.index) != len(index) {
 			continue
 		}
-		ret := &bucket
+		ret := bucket
 		for label, value := range index {
 			if value != bucket.index[label] {
 				ret = nil
@@ -81,6 +86,7 @@ func (s *InMemoryLogStore) findBucketsExactMatchUnsafe(index map[string]string) 
 }
 
 func (s *InMemoryLogStore) FindBucketsExactMatch(index map[string]string) *LogBucket {
+	// TODO
 	s.bucketsGroupMutex.RLock()
 	defer s.bucketsGroupMutex.RUnlock()
 	return s.findBucketsExactMatchUnsafe(index)
@@ -90,13 +96,18 @@ func (s *InMemoryLogStore) FindBucketsIncludeIndex(index map[string]string) []*L
 	var buckets []*LogBucket
 	s.bucketsGroupMutex.RLock()
 	defer s.bucketsGroupMutex.RUnlock()
-	for _, bucket := range s.logBuckets {
+	for i := range s.logBuckets {
+		bucket := &s.logBuckets[i]
+		match := true
 		for label, value := range index {
 			if value != bucket.index[label] {
+				match = false
 				break
 			}
 		}
-		buckets = append(buckets, &bucket)
+		if match {
+			buckets = append(buckets, bucket)
+		}
 	}
 	return buckets
 }
@@ -119,7 +130,6 @@ func (s *InMemoryLogStore) Push(log common.Log) {
 	}
 
 	bucket = s.addNewBucket(log.Labels)
-	fmt.Println("Bucket created: ", bucket)
 	bucket.logSet.Push(log)
 }
 
@@ -149,7 +159,11 @@ func (s *InMemoryLogStore) Dump() []common.Log {
 
 func (s *TenantedInMemoryStore) Push(log common.Log) {
 	if _, ok := s.tenantedStores[log.TenantID]; !ok {
-		s.tenantedStores[log.TenantID] = NewInMemoryLogStore()
+		s.tenantedMutex.Lock()
+		if _, ok := s.tenantedStores[log.TenantID]; !ok {
+			s.tenantedStores[log.TenantID] = NewInMemoryLogStore()
+		}
+		s.tenantedMutex.Unlock()
 	}
 	s.tenantedStores[log.TenantID].Push(log)
 }

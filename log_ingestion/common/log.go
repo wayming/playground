@@ -1,6 +1,9 @@
 package common
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type Log struct {
 	TenantID  string            `json:"tenant_id"`
@@ -23,7 +26,10 @@ func NewLogSafe() *LogSafe {
 
 func (s *LogSafe) Push(log Log) {
 	s.logMutex.Lock()
+	fmt.Println("Pushing log: ", log)
+	fmt.Println("before: ", s.logs)
 	s.logs = append(s.logs, log)
+	fmt.Println("after: ", s.logs)
 	s.logMutex.Unlock()
 }
 
