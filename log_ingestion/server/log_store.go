@@ -80,7 +80,9 @@ func (s *InMemoryLogStore) findBucketsExactMatchUnsafe(index map[string]string) 
 				break
 			}
 		}
-		return ret
+		if ret != nil {
+			return ret
+		}
 	}
 	return nil
 }
