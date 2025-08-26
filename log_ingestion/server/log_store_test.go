@@ -21,7 +21,7 @@ func TestInMemoryLogStore_Push(t *testing.T) {
 			t.Errorf("expected 1 log bucket, got %d", len(s.logBuckets))
 		}
 		t.Log(s.logBuckets[0].index)
-		t.Log(s.logBuckets[0].logs)
+		t.Log(s.logBuckets[0].logSet.Dump())
 	})
 
 	t.Run("PushMulti", func(t *testing.T) {

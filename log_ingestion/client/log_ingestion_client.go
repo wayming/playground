@@ -103,7 +103,7 @@ func push_stream(logClient *LogClient, tenantID string, streamID int, logCount i
 		logClient.Push(common.Log{
 			TenantID:  tenantID,
 			Labels:    map[string]string{"app": "api", "env": Labels[i%len(Labels)]},
-			Timestamp: time.Now().UnixNano() / 1e6, // ms
+			Timestamp: time.Now().UnixNano(),
 			Line:      "GET /login 200 OK",
 		})
 	}
@@ -152,7 +152,7 @@ func main() {
 	streams := 1
 	logs := 1
 	baseURL := "http://localhost:8080"
-	timeout := time.Second
+	timeout := time.Second * 10
 	for idx := 1; idx < len(os.Args); idx++ {
 		arg := os.Args[idx]
 		if arg == "-api" {
@@ -183,10 +183,9 @@ func main() {
 			usage("unknown argument: " + arg)
 		}
 	}
-
-	fmt.Printf("Pushing logs for %d tenants, %d streams per tenant, %d logs per stream\n", tenants, streams, logs)
-	logClient := NewLogClient(baseURL, timeout)
 	if api == "Push" {
+		fmt.Printf("Pushing logs for %d tenants, %d streams per tenant, %d logs per stream\n", tenants, streams, logs)
+		logClient := NewLogClient(baseURL, timeout)
 		done := make(chan bool)
 		for i := 0; i < tenants; i++ {
 			go push_tenant(logClient, fmt.Sprintf("team-%d", i), streams, logs, done)
@@ -196,6 +195,12 @@ func main() {
 			fmt.Printf("%d tenants done\n", i+1)
 		}
 	} else if api == "Dump" {
-		logClient.Dump()
+		logClient := NewLogClient(baseURL, timeout)
+		logs, err := logClient.Dump()
+		if err != nil {
+			fmt.Println("Error dumping logs: ", err)
+			os.Exit(1)
+		}
+		fmt.Printf("%d logs dumped\n", len(logs))
 	}
 }

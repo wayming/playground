@@ -14,10 +14,10 @@ type LogBucket struct {
 	index  map[string]string
 }
 
-func NewLogBucket() *LogBucket {
+func NewLogBucket(index map[string]string) *LogBucket {
 	return &LogBucket{
 		logSet: common.LogSafe{},
-		index:  map[string]string{},
+		index:  index,
 	}
 }
 
@@ -50,14 +50,27 @@ func NewTenantedInMemoryStore() *TenantedInMemoryStore {
 	}
 }
 
-func (s *InMemoryLogStore) FindBucketsExactMatch(labels map[string]string) *LogBucket {
+func (s *InMemoryLogStore) addNewBucket(index map[string]string) *LogBucket {
+	s.bucketsGroupMutex.Lock()
+	defer s.bucketsGroupMutex.Unlock()
+
+	fmt.Println("Adding new bucket for key ", index)
+	bucket := s.findBucketsExactMatchUnsafe(index)
+	if bucket != nil {
+		return bucket
+	}
+	s.logBuckets = append(s.logBuckets, *NewLogBucket(index))
+	return &s.logBuckets[len(s.logBuckets)-1]
+}
+
+func (s *InMemoryLogStore) findBucketsExactMatchUnsafe(index map[string]string) *LogBucket {
 	for _, bucket := range s.logBuckets {
-		if len(bucket.index) != len(labels) {
+		if len(bucket.index) != len(index) {
 			continue
 		}
 		ret := &bucket
-		for label, value := range bucket.index {
-			if value != labels[label] {
+		for label, value := range index {
+			if value != bucket.index[label] {
 				ret = nil
 				break
 			}
@@ -67,10 +80,18 @@ func (s *InMemoryLogStore) FindBucketsExactMatch(labels map[string]string) *LogB
 	return nil
 }
 
-func (s *InMemoryLogStore) FindBucketsMatchLabels(labels map[string]string) []*LogBucket {
+func (s *InMemoryLogStore) FindBucketsExactMatch(index map[string]string) *LogBucket {
+	s.bucketsGroupMutex.RLock()
+	defer s.bucketsGroupMutex.RUnlock()
+	return s.findBucketsExactMatchUnsafe(index)
+}
+
+func (s *InMemoryLogStore) FindBucketsIncludeIndex(index map[string]string) []*LogBucket {
 	var buckets []*LogBucket
+	s.bucketsGroupMutex.RLock()
+	defer s.bucketsGroupMutex.RUnlock()
 	for _, bucket := range s.logBuckets {
-		for label, value := range labels {
+		for label, value := range index {
 			if value != bucket.index[label] {
 				break
 			}
@@ -81,37 +102,46 @@ func (s *InMemoryLogStore) FindBucketsMatchLabels(labels map[string]string) []*L
 }
 
 func (s *InMemoryLogStore) Push(log common.Log) {
+	fmt.Println("Pushing log: ", log)
+	var bucket *LogBucket
+	{
+		s.bucketsGroupMutex.RLock()
+		bucket = s.findBucketsExactMatchUnsafe(log.Labels)
+		s.bucketsGroupMutex.RUnlock()
+	}
 
-	bucket := s.FindBucketsExactMatch(log.Labels)
+	fmt.Println("Bucket found: ", bucket)
+	// Push and return if found
 	if bucket != nil {
 		fmt.Println("Found exact match bucket for key ", log.Labels)
 		bucket.logSet.Push(log)
 		return
 	}
 
-	s.bucketsGroupMutex.Lock()
-	defer s.bucketsGroupMutex.Unlock()
-
-	fmt.Println("Creating new bucket for key ", log.Labels)
-	bucket = NewLogBucket()
-	bucket.index = log.Labels
+	bucket = s.addNewBucket(log.Labels)
+	fmt.Println("Bucket created: ", bucket)
 	bucket.logSet.Push(log)
-	s.logBuckets = append(s.logBuckets, *bucket)
 }
 
 func (s *InMemoryLogStore) Query(labels map[string]string) []common.Log {
 	s.bucketsGroupMutex.RLock()
 	defer s.bucketsGroupMutex.RUnlock()
 	var logs []common.Log
-	for _, bucket := range s.FindBucketsMatchLabels(labels) {
+	for _, bucket := range s.FindBucketsIncludeIndex(labels) {
 		logs = append(logs, bucket.logSet.Dump()...)
 	}
 	return logs
 }
 
 func (s *InMemoryLogStore) Dump() []common.Log {
+	var logBuckets []LogBucket
+	{
+		s.bucketsGroupMutex.RLock()
+		logBuckets = s.logBuckets
+		s.bucketsGroupMutex.RUnlock()
+	}
 	var logs []common.Log
-	for _, bucket := range s.logBuckets {
+	for _, bucket := range logBuckets {
 		logs = append(logs, bucket.logSet.Dump()...)
 	}
 	return logs
