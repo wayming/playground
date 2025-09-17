@@ -14,40 +14,47 @@ public:
     ~LockFreeStack() {
         int v;
         while(pop(v)) {
-            1;
         }
     }
     LockFreeStack(const LockFreeStack&) = delete;
-    LockFreeStack(const LockFreeStack&&) = delete;
+    LockFreeStack(LockFreeStack&&) = delete;
     LockFreeStack& operator=(const LockFreeStack&) = delete;
-    LockFreeStack& operator=(const LockFreeStack&&) = delete;
+    LockFreeStack& operator=(LockFreeStack&&) = delete;
 
     void push(int v) {
-        Node* newHead = new Node{v, nullptr};
-        Node* oldHead = head.load();
+        Node* node = new Node{v, nullptr};
+        Head oldHead = head.load();
+        Head newHead;
         do {
-            newHead->next = oldHead;
+            node->next = oldHead.node;
+            newHead.node = node;
+            newHead.tag = oldHead.tag + 1;
         } while (!head.compare_exchange_weak(oldHead, newHead, std::memory_order_release, std::memory_order_relaxed));
     }
 
     bool pop(int& v) {
-        Node* oldHead = head.load();
-        Node* newHead = nullptr;
+        Head oldHead = head.load();
+        Head newHead;
         do {
-            if (oldHead != nullptr) {
-                newHead = oldHead->next;
+            if (oldHead.node == nullptr) {
+                return false;
             }
+            newHead.node = oldHead.node->next;
+            newHead.tag = oldHead.tag + 1;
         } while (!head.compare_exchange_weak(oldHead, newHead, std::memory_order_acquire, std::memory_order_relaxed));
 
-        if (oldHead == nullptr) {
-            return false;
-        }
-
-        v = oldHead->data;
-        // delete(oldHead);
-        oldHead = nullptr;
+        v = oldHead.node->data;
+        delete(oldHead.node);
+        oldHead.node = nullptr;
         return true;
     }
 private:
-    atomic<Node*> head;
+    struct Head {
+        Node* node;
+        uint64_t tag;
+        bool operator==(const Head& other) const {
+            return node == other.node && tag == other.tag;
+        }
+    };
+    atomic<Head> head{Head{nullptr, 0}};
 };
