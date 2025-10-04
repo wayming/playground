@@ -29,7 +29,9 @@ public:
             node->next = oldHead.node;
             newHead.node = node;
             newHead.tag = oldHead.tag + 1;
-        } while (!head.compare_exchange_weak(oldHead, newHead, std::memory_order_release, std::memory_order_relaxed));
+        //  memory_order_relaxed(producer) assures the new node is visible to other threads when head is updated
+        //  Code before compare_exchange_weak is not reordered after it
+    } while (!head.compare_exchange_weak(oldHead, newHead, std::memory_order_release, std::memory_order_relaxed));
     }
 
     bool pop(int& v) {
@@ -41,6 +43,8 @@ public:
             }
             newHead.node = oldHead.node->next;
             newHead.tag = oldHead.tag + 1;
+        // memory_order_acquire(consumer) assures the retrieved node can view other thread's changes before release
+        // code after the compare_exchange_weak is not reordered before it
         } while (!head.compare_exchange_weak(oldHead, newHead, std::memory_order_acquire, std::memory_order_relaxed));
 
         v = oldHead.node->data;
