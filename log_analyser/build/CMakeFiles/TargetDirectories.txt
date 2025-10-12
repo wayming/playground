@@ -1,0 +1,3 @@
+/home/way/Workspace/playground/log_analyser/build/CMakeFiles/LogAnalyzer.dir
+/home/way/Workspace/playground/log_analyser/build/CMakeFiles/edit_cache.dir
+/home/way/Workspace/playground/log_analyser/build/CMakeFiles/rebuild_cache.dir

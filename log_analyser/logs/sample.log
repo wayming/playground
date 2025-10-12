@@ -1,0 +1,8 @@
+[2025-10-12 10:00:00] ModuleA [INFO] Start service latency=10ms
+[2025-10-12 10:00:01] ModuleA [ERROR] Failed to connect latency=50ms
+[2025-10-12 10:00:02] ModuleB [WARN] Retry connect latency=30ms
+[2025-10-12 10:00:03] ModuleB [INFO] Connection success latency=15ms
+[2025-10-12 10:00:04] ModuleC [INFO] Processing request latency=25ms
+[2025-10-12 10:00:05] ModuleC [ERROR] Timeout after 3000ms latency=3000ms
+[2025-10-12 10:00:06] ModuleA [INFO] Restart complete latency=5ms
+[2025-10-12 10:00:07] ModuleB [INFO] Heartbeat ok latency=2ms
