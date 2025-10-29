@@ -1,7 +1,7 @@
 #pragma once
 #include "LogEntry.h"
-#include <string>
 #include <vector>
+#include <functional>
 
 namespace LogAnalyzer {
 
@@ -17,4 +17,4 @@ private:
     std::string pattern_;
 };
 
-} // namespace LogAnalyzer
+}  // namespace LogAnalyzer

@@ -46,3 +46,4 @@ def order_by_age_and_city(persons: list):
     return persons
 
 print(order_by_age_and_city([('bob', 10, 'Brisbane'), ('alice',30, 'Sydney'), ('tom', 10, 'Brisbane'), ('jane', 20, 'Sydney'), ('harry', 20, 'Brisbane')]))
+
