@@ -2,6 +2,7 @@ import asyncio
 import random
 import signal
 import datetime
+from traceback import print_exc
 async def producer(queue: asyncio.Queue, stop: asyncio.Event, rate_per_second: int):
     begin = datetime.datetime.now()
     count = 0
@@ -28,7 +29,7 @@ async def producer(queue: asyncio.Queue, stop: asyncio.Event, rate_per_second: i
         except asyncio.TimeoutError as e:
             print(f"queue put timeout, {e}")
         except Exception as e:
-            print(e)
+            print_exc()
             
 async def consumer(queue: asyncio.Queue, stop: asyncio.Event, results: list):
     begin = datetime.datetime.now()

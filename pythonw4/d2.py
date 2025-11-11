@@ -35,7 +35,7 @@ class StockPriceAggregator:
             raise ValueError(f"price for {symbol} not found")
         
         now = datetime.datetime.now()
-        prices_in_window = [p for t, p in self.data[symbol] if t <= now and now - t <= datetime.timedelta(seconds=window)]
+        prices_in_window = [p for t, p in self.data[symbol] if now - datetime.timedelta(seconds=window) <= t <= now]
         if not prices_in_window:
             raise ValueError(f"price in {window} seconds for {symbol} not found")
         return prices_in_window

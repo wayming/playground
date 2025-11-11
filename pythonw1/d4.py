@@ -17,7 +17,7 @@ for x in combinations_with_replacement(l2, 3):
     print(x)
 print("end of combinations_with_replacement")
 
-def premutations(iterable, r = None):
+def permutations(iterable, r = None):
     pool = tuple(iterable)
     r = len(pool) if r == None else r
     if len(pool) == 0 or r == 0:
@@ -28,14 +28,14 @@ def premutations(iterable, r = None):
     results = []
     for i in range(len(pool)):
         remain = pool[:i] if i == len(pool) -1 else pool[:i] + pool[i+1:]
-        for re in premutations(remain, r - 1):
+        for re in permutations(remain, r - 1):
             results.append((pool[i],) + re)
     return results
 
-# for i in premutations(set('abca')):
+# for i in permutations(set('abca')):
 #     print(i)
 
-# for i in premutations('abc', 2):
+# for i in permutations('abc', 2):
 #     print(i)
 
 
