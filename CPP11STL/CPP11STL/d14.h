@@ -2,7 +2,14 @@
 #include <string>
 #include <mutex>
 #include <condition_variable>
-
+#include <chrono>
+#include <thread>
+class QueueEmptyException : public std::exception {
+public:
+	const char* what() const noexcept override {
+		return "queue empty";
+	}
+};
 class QueueSafe {
 public:
 	void push(const std::string& message) {
@@ -13,7 +20,10 @@ public:
 
 	std::string pop() {
 		std::unique_lock<std::mutex> lock(mtx);
-		cv.wait(lock, [this]() { return !q.empty();  });
+		cv.wait(lock, [this]() { return !q.empty() || shutdown;  });
+		if (q.empty()) {
+			throw QueueEmptyException();
+		}
 		std::string message = q.front();
 		q.pop();
 		return message;
@@ -38,11 +48,16 @@ public:
 		return q.empty();
 	}
 
-	void notifyAll() {
+	void graceShutdown() {
+		while (!q.empty()) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		}
+		shutdown = true;
 		cv.notify_all();
 	}
 private:
 	std::queue<std::string> q;
 	std::mutex mtx;
 	std::condition_variable cv;
+	std::atomic<bool> shutdown = false;
 };

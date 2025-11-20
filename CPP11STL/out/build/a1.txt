@@ -1,1 +1,0 @@
-this is a test string for file a1.txt

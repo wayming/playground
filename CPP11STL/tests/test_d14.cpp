@@ -13,8 +13,13 @@ TEST(QueueSafeTest, Sanity) {
 	for (int i = 0; i < 2; i++) {
 		consumers.emplace_back([&q, &stop]() {
 			while (!stop) {
-				std::cout << "consumer-" << std::this_thread::get_id() << ":" << q.pop() << std::endl;
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				try {
+					std::cout << "consumer-" << std::this_thread::get_id() << ":" << q.pop() << std::endl;
+					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				} catch(QueueEmptyException& e) {
+					// ignore queue empty error
+					std::cout << e.what() << std::endl;
+				}
 			}
 		});
 
@@ -45,12 +50,8 @@ TEST(QueueSafeTest, Sanity) {
 		p.join();
 	}
 
-	while (!q.empty()) {
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	}
-
+	q.graceShutdown();
 	stop = true;
-	q.notifyAll();
 
 	for (auto& c : consumers) {
 		c.join();

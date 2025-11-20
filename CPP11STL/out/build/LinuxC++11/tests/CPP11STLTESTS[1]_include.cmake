@@ -1,5 +1,0 @@
-if(EXISTS "/home/way/Workspace/CPP11STL/out/build/LinuxC++11/tests/CPP11STLTESTS[1]_tests.cmake")
-  include("/home/way/Workspace/CPP11STL/out/build/LinuxC++11/tests/CPP11STLTESTS[1]_tests.cmake")
-else()
-  add_test(CPP11STLTESTS_NOT_BUILT CPP11STLTESTS_NOT_BUILT)
-endif()
