@@ -1,0 +1,9 @@
+
+[network]
+host = 127.0.0.1
+port = 8080
+
+[database]
+user = root
+password = secret
+timeout = 30
