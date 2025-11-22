@@ -73,6 +73,12 @@
         "__nullptr": "cpp",
         "__mutex_base": "cpp",
         "__hash_table": "cpp",
-        "__tree": "cpp"
+        "__tree": "cpp",
+        "__debug": "cpp",
+        "__tuple": "cpp",
+        "target": "cpp",
+        "__bit_reference": "cpp",
+        "__split_buffer": "cpp",
+        "filesystem": "cpp"
     }
 }
