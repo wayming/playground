@@ -71,6 +71,8 @@
         "typeinfo": "cpp",
         "variant": "cpp",
         "__nullptr": "cpp",
-        "__mutex_base": "cpp"
+        "__mutex_base": "cpp",
+        "__hash_table": "cpp",
+        "__tree": "cpp"
     }
 }

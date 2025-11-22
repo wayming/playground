@@ -15,7 +15,7 @@ TEST(MatrixTest, Construct) {
 		{2, 3, 4, 5, 6},
 		{1, 1, 1, 1, 1, 1, 1}
 	};
-	m.print();
+	std::cout << m;
 }
 
 TEST(MatrixTest, Plus) {
@@ -27,10 +27,10 @@ TEST(MatrixTest, Plus) {
 
 	Matrix<3, 5, int> m2 = m + m; // Direct construct result at m2 directly, no move or copy
 
-	m2.print();
+	std::cout << m2;
 }
 
-TEST(MatrixTest, multiply) {
+TEST(MatrixTest, multiplybyconst) {
 	Matrix<3, 5, int> m = {
 		{1},
 		{2, 3, 4, 5, 6},
@@ -38,5 +38,16 @@ TEST(MatrixTest, multiply) {
 	};
 
 	auto m2 = m * 5;
-	m2.print();
+	std::cout << m2;
+}
+
+TEST(MatrixTest, multiplybymatrix) {
+	Matrix<3, 5, int> m = {
+		{1},
+		{2, 3, 4, 5, 6},
+		{1, 1, 1, 1, 1, 1, 1}
+	};
+
+	auto m2 = m * m;
+	std::cout << m2;
 }

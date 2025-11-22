@@ -42,6 +42,16 @@ public:
         return result;
     }
 
+    Matrix<X, Y, T> operator*(const Matrix<X, Y, T>& other) {
+        Matrix<X, Y, T> result;
+        for (int x = 0; x < data.size(); ++x) {
+            for (int y = 0; y < data[0].size(); ++y) {
+                result.data[x][y] = data[x][y] * other.data[x][y];
+            }
+        }
+        return result;
+    }
+
     Matrix<X, Y, T>& operator*(const T& op) {
         std::for_each(data.begin(), data.end(), [&op](auto& row){
             std::for_each(row.begin(), row.end(), [&op](auto& col) { col = col * op; });
@@ -63,7 +73,23 @@ public:
             std::cout << "]" << std::endl;
         }
         std::cout << "]" << std::endl;
+    }
 
+    friend std::ostream& operator<<(std::ostream& os, Matrix<X, Y, T>& matrix) {
+        os << "[" << std::endl;
+        for (auto& row : matrix.data) {
+            os << "  [";
+            int idx = 0;
+            for (auto& e : row) {
+                os << e;
+                if (idx++ < row.size() - 1) {
+                    os << ", ";
+                }
+            }
+            os << "]" << std::endl;
+        }
+        os << "]" << std::endl;
+        return os;
     }
 private:
     std::array<row, X> data;
