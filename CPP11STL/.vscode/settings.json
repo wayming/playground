@@ -80,6 +80,8 @@
         "__bit_reference": "cpp",
         "__split_buffer": "cpp",
         "filesystem": "cpp",
-        "__config": "cpp"
+        "__config": "cpp",
+        "__functional_base": "cpp",
+        "__functional_base_03": "cpp"
     }
 }
