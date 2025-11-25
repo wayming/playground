@@ -1,5 +1,5 @@
 #include <future>
-#include <deque>
+#include <list>
 #include <utility>
 #include <unordered_map>
 #include <mutex>
@@ -10,14 +10,13 @@
 class LRUSafe {
 public:
     using DATA_ENTRY = std::tuple<std::string, std::string, std::chrono::time_point<std::chrono::system_clock>>;
-    using DEQ = std::deque<DATA_ENTRY>;
+    using DEQ = std::list<DATA_ENTRY>;
     LRUSafe(size_t n, int ttl) :cap(n),ttl(ttl) {} 
     void put(const std::string& key, const std::string& val) {
         {
             std::lock_guard<std::mutex> lock(mtx);
             if (indexes.find(key) != indexes.end()) {
-                lru.emplace_front(*(indexes.at(key)));
-                lru.erase(indexes.at(key));
+                lru.splice(lru.begin(), lru, indexes.at(key));
             } else {
                 lru.emplace_front(
                     std::make_tuple(std::move(key), std::move(val),
@@ -40,8 +39,7 @@ public:
             {
                 std::lock_guard<std::mutex> lock(mtx);
                 ret = std::get<1>(*(indexes.at(key)));
-                lru.emplace_front(*(indexes.at(key)));
-                lru.erase(indexes.at(key));
+                lru.splice(lru.begin(), lru, indexes.at(key));
             }
 
             (void)std::async(std::launch::async, &LRUSafe::houseKeeping, this);
@@ -80,7 +78,7 @@ public:
         std::cout << std::endl;
     }
 private:
-    std::deque<DATA_ENTRY> lru;
+    std::list<DATA_ENTRY> lru;
     std::unordered_map<std::string, DEQ::const_iterator> indexes;
     std::mutex mtx;
     size_t cap;
