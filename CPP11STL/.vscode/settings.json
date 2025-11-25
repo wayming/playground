@@ -83,6 +83,9 @@
         "__config": "cpp",
         "__functional_base": "cpp",
         "__functional_base_03": "cpp",
-        "__string": "cpp"
+        "__string": "cpp",
+        "__node_handle": "cpp",
+        "__memory": "cpp",
+        "locale": "cpp"
     }
 }

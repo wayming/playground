@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <numeric>
 
 class StockDataParser {
 public:
@@ -16,7 +17,6 @@ public:
             begin = end+1;
         }
         tokens.emplace_back(str.substr(begin));
-        for(auto& token: tokens) std::cout << token << std::endl;
         return tokens;
     }
 
@@ -49,9 +49,8 @@ public:
             }
         }
 
-        double sum;
-        std::for_each(targets.begin(), targets.end(), [&sum](auto p) { sum += p; });
-        std::cout << "sum=" << sum << ", min=" << *std::min_element(targets.begin(), targets.end())
+        std::cout << "sum=" << std::accumulate(targets.begin(), targets.end(), 0)
+                  << ", min=" << *std::min_element(targets.begin(), targets.end())
                   << ", max=" << *std::max_element(targets.begin(), targets.end()) << std::endl;
     
     }
