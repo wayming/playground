@@ -82,6 +82,7 @@
         "filesystem": "cpp",
         "__config": "cpp",
         "__functional_base": "cpp",
-        "__functional_base_03": "cpp"
+        "__functional_base_03": "cpp",
+        "__string": "cpp"
     }
 }

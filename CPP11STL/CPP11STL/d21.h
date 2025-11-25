@@ -6,36 +6,43 @@
 
 class StockDataParser {
 public:
-    void parse(const std::string& filePath) {
-        std::ifstream s(filePath);
-        if (!s.good()) {
-            throw std::runtime_error("Failed to open file " + filePath);
+    std::vector<std::string> split(const std::string& str) {
+        std::vector<std::string> tokens;
+        size_t begin = 0;
+        while(begin != std::string::npos) {
+            auto end = str.find(',', begin);
+            if (end == std::string::npos) break;
+            tokens.emplace_back(str.substr(begin, end - begin));
+            begin = end+1;
         }
+        tokens.emplace_back(str.substr(begin));
+        for(auto& token: tokens) std::cout << token << std::endl;
+        return tokens;
+    }
+
+    void header(const std::string& str) {
+        size_t idx = 0;
+        for (auto& key : split(str)) {
+            cols[key] = idx++;
+        }
+    }
+    void parse(const std::string& filePath, const std::string& colName) {
+        std::ifstream s(filePath);
+        if (!s.good()) throw std::runtime_error("Failed to open file " + filePath);
+        
         std::string row;
-        std::getline(s, row); // skip header
+        std::getline(s, row);
+        header(row);
+        if (cols.find(colName) == cols.end()) throw std::runtime_error("Invalid columen name " + colName);
+
         while(s.good() && !s.eof()) {
             std::getline(s, row);
             if (row.length() == 0) {
                 continue; // skip empty line
             }
-            int found = 0;
-            size_t begin = 0;
-            while (found < 2) {
-                begin = row.find(',', begin+1);
-                if (begin == std::string::npos) {
-                    throw std::runtime_error("bad format for line " + row);
-                }
-                found++;
-            }
-            begin = begin+1;
-            auto end = row.find(',', begin);
-            if (end == std::string::npos) {
-                throw std::runtime_error("bad format for line " + row);
-            }
-
-            auto price = row.substr(begin, end-begin);
+            
             try {
-                prices.push_back(std::stod(price));
+                targets.push_back(std::stod(split(row)[cols.at(colName)]));
             } catch (std::exception) {
                 std::cerr << "bad format for line " << row << std::endl;
                 throw;
@@ -43,11 +50,12 @@ public:
         }
 
         double sum;
-        std::for_each(prices.begin(), prices.end(), [&sum](auto p) { sum += p; });
-        std::cout << "sum=" << sum << ", min=" << *std::min_element(prices.begin(), prices.end())
-                  << ", max=" << *std::max_element(prices.begin(), prices.end()) << std::endl;
+        std::for_each(targets.begin(), targets.end(), [&sum](auto p) { sum += p; });
+        std::cout << "sum=" << sum << ", min=" << *std::min_element(targets.begin(), targets.end())
+                  << ", max=" << *std::max_element(targets.begin(), targets.end()) << std::endl;
     
     }
 private:
-    std::vector<double> prices;
+    std::vector<double> targets;
+    std::unordered_map<std::string, size_t> cols;
 };

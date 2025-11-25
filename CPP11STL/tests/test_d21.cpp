@@ -11,5 +11,6 @@ TEST(StockDataParserTest, Sanity) {
 	os << "AAPL,20200105,188,nasdaq" << std::endl;
 	os.close();
 	StockDataParser p;
-	p.parse("StockDataParserTest.csv");
+	p.parse("StockDataParserTest.csv", "price");
+	p.parse("StockDataParserTest.csv", "date");
 }

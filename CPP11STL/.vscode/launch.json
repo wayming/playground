@@ -1,7 +1,18 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": []
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug selected CTest (CodeLLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${cmake.testProgram}",
+      "args": ["${cmake.testArgs}"],
+      "cwd": "${cmake.testWorkingDirectory}",
+      "stopOnEntry": false,
+      "env": {},
+      "initCommands": [
+        "settings set target.inline-breakpoint-strategy always"
+      ]
+    }
+  ]
 }

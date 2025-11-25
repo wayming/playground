@@ -1,0 +1,6 @@
+symbol,date,price,exchange
+AAPL,20200101,100,nasdaq
+AAPL,20200102,110,nasdaq
+AAPL,20200103,120,nasdaq
+AAPL,20200104,111,nasdaq
+AAPL,20200105,188,nasdaq
