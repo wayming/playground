@@ -20,7 +20,7 @@ std::string& renderTemplate(std::string& tpl, const std::unordered_map<std::stri
         }
         auto key = tpl.substr(pos+2, end - pos - 2);
         if (params.find(key) == params.end()) {
-            throw std::runtime_error("key " + key + " not found");
+            throw std::invalid_argument("key " + key + " not found");
         }
         tpl.replace(pos, end - pos + 1, params.at(key));
         pos = tpl.find("${", pos + params.at(key).size());
