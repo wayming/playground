@@ -3,22 +3,58 @@
 #include <utility>
 #include <vector>
 #include <sstream>
+#include <fstream>
+#include <optional>
+#include <iterator>
+// std::vector<std::string> split(const std::string& src) {
+//     std::stringstream ss(src);
+//     std::vector<std::string> tokens;
+//     std::string token;
+//     while (ss.good()) {
+//         if (std::getline(ss, token, ',')) {
+//             std::cout << "true" << std::endl;
+//         } else {
+//             std::cout << "false" << std::endl;
+//         }
+//         tokens.emplace_back(std::move(token));
+//     }
+//     return tokens;
+// }
 
-std::vector<std::string> split(const std::string src) {
-    std::stringstream ss(src);
+std::vector<std::string> split(const std::string& src) {
+    std::istringstream ss(src);
     std::vector<std::string> tokens;
     std::string token;
-    while (!ss.eof()) {
-        std::getline(ss, token, ',');
-        tokens.emplace_back(std::move(token));
+
+    while (std::getline(ss, token, ',')) {
+        tokens.emplace_back(token);
+    }
+
+    // handling trailing delimiter
+    if (!src.empty() && src.back() == ',') {
+        tokens.emplace_back("");
     }
     return tokens;
 }
 
-class CSVInputIterator {
+class CSVInputIterator : public std::iterator<
+    std::input_iterator_tag,           // 1. iterator_category
+    std::vector<std::string>,          // 2. value_type
+    std::ptrdiff_t,                    // 3. difference_type
+    std::vector<std::string>*,         // 4. pointer (使用实际指针类型)
+    std::vector<std::string>&          // 5. reference (使用实际引用类型)
+>
+{
 public:
-    using ElementType = std::vector<std::string>;
 
+    using ElementType = std::vector<std::string>;
+    // using iterator_category = std::input_iterator_tag;
+    // using value_type = ElementType;
+    // using difference_type = std::ptrdiff_t;
+    // using pointer = value_type*;
+    // using reference = value_type&;
+
+    CSVInputIterator() : end(true) {}
     CSVInputIterator(std::istream& s) : is(s) {
         ++(*this);
     }
@@ -26,9 +62,10 @@ public:
     ElementType& operator*() {return element;}
     ElementType* operator->() {return &element;}
     CSVInputIterator& operator++() {
+        if (!is.has_value()) throw std::runtime_error("Not initialised.");
         if (end) return *this;
         std::string line;
-        if (!std::getline(is, line)) {
+        if (!std::getline(is->get(), line)) {
             end = true;
             return *this;
         }
@@ -47,13 +84,17 @@ public:
         return !(*this == other);
     }
 private:
-    std::istream& is;
+    std::optional<std::reference_wrapper<std::istream>> is = {};
     ElementType element;
     bool end = false;
 };
 
 class JSONOutputIterator {
 public:
+    using iterator_category = std::output_iterator_tag;
+    using value_type = void;
+    using difference_type = void;
+
     JSONOutputIterator(std::ostream& s, std::vector<std::string>&& h) :os(s), headers(std::move(h)) {}
     ~JSONOutputIterator() {}
     JSONOutputIterator& operator=(const std::vector<std::string>& fields) {
@@ -87,3 +128,22 @@ private:
     std::vector<std::string> headers;
     bool first = true;
 };
+
+std::string convertCSVToJSON(const std::string& path) {
+    std::ifstream is(path.c_str(), std::ifstream::in);
+    if (!is.good()) throw std::runtime_error("Failed to open file " + path);
+
+    std::string line;
+    if (!std::getline(is, line)) {
+        throw std::runtime_error("Failed to read header line");
+    }
+    std::vector<std::string> headers = std::move(split(line));
+    if (headers.size() == 0) throw std::runtime_error("Failed to read header line");
+
+    std::stringstream os;
+    CSVInputIterator begin(is);
+    CSVInputIterator end;
+    JSONOutputIterator out(os, std::move(headers));
+    std::copy(begin, end, out);
+    return os.str();
+}
