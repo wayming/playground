@@ -54,8 +54,8 @@ private:
             std::unique_ptr<LogMessage> msg;
             {
                 std::unique_lock<std::mutex> lock(mtx);
-                cv.wait(lock, [this]() { return !msgQueue.empty() or stop; });
-                if (stop and msgQueue.empty()) break;
+                cv.wait(lock, [this]() { return !msgQueue.empty() || stop; });
+                if (stop && msgQueue.empty()) break;
                 msg = std::move(msgQueue.front());
                 msgQueue.pop();
             }

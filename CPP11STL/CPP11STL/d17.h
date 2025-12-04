@@ -1,6 +1,7 @@
 #include <array>
 #include <initializer_list>
 #include <iostream>
+#include <algorithm>
 
 template <size_t X, size_t Y, typename T>
 class Matrix {

@@ -37,15 +37,14 @@ std::vector<std::string> split(const std::string& src) {
     return tokens;
 }
 
-class CSVInputIterator : public std::iterator<
-    std::input_iterator_tag,           // 1. iterator_category
-    std::vector<std::string>,          // 2. value_type
-    std::ptrdiff_t,                    // 3. difference_type
-    std::vector<std::string>*,         // 4. pointer (使用实际指针类型)
-    std::vector<std::string>&          // 5. reference (使用实际引用类型)
->
+class CSVInputIterator
 {
 public:
+    using iterator_category = std::input_iterator_tag;
+    using value_type        = std::vector<std::string>;
+    using difference_type   = std::ptrdiff_t;
+    using pointer           = value_type*;
+    using reference         = value_type&;
 
     using ElementType = std::vector<std::string>;
     // using iterator_category = std::input_iterator_tag;
@@ -95,7 +94,7 @@ public:
     using value_type = void;
     using difference_type = void;
 
-    JSONOutputIterator(std::ostream& s, std::vector<std::string>&& h) :os(s), headers(std::move(h)) {}
+    JSONOutputIterator(std::ostream& s, std::vector<std::string>&& h) :os(&s), headers(std::move(h)) {}
     ~JSONOutputIterator() {}
     JSONOutputIterator& operator=(const std::vector<std::string>& fields) {
         if (fields.size() != headers.size()) {
@@ -104,27 +103,34 @@ public:
             throw std::runtime_error(error.str());
         }
         
-        if (!first) os << ", ";
+        if (!first) *os << ", ";
         first = false;
 
-        os << "{";
+        *os << "{";
         for (int i = 0; i < headers.size(); ++i) {
-            os << '"' << headers.at(i) << '"' << ':';
-            os << '"' << fields.at(i) << '"';
+            *os << '"' << headers.at(i) << '"' << ':';
+            *os << '"' << fields.at(i) << '"';
             if (i < headers.size() - 1) {
-                os << ", ";
+                *os << ", ";
             }
         }
-        os << "}";
+        *os << "}";
 
         return *this;
     }
+
+
+    JSONOutputIterator(const JSONOutputIterator& other) = default;
+    JSONOutputIterator(JSONOutputIterator&& other) = default;
+    JSONOutputIterator& operator=(const JSONOutputIterator&) = default;
+    JSONOutputIterator& operator=(JSONOutputIterator&&) = default;
+
     JSONOutputIterator& operator*() {return *this;}
     JSONOutputIterator& operator++() {return *this;}
     JSONOutputIterator& operator++(int) {return *this;}
 
 private:
-    std::ostream& os;
+    std::ostream* os;
     std::vector<std::string> headers;
     bool first = true;
 };
@@ -141,9 +147,15 @@ std::string convertCSVToJSON(const std::string& path) {
     if (headers.size() == 0) throw std::runtime_error("Failed to read header line");
 
     std::stringstream os;
-    CSVInputIterator begin(is);
+    CSVInputIterator it(is);
     CSVInputIterator end;
     JSONOutputIterator out(os, std::move(headers));
-    std::copy(begin, end, out);
+    // Not compile on windows
+    // std::copy(it, end, out);
+
+    for (; it != end; ++it) {
+        out = *it;
+        ++out;
+    }
     return os.str();
 }
