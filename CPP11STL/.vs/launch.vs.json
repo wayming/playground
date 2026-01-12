@@ -1,0 +1,12 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "CPP11STLTESTS.exe (tests\\CPP11STLTESTS.exe)",
+      "name": "CPP11STLTESTS.exe (tests\\CPP11STLTESTS.exe)"
+    }
+  ]
+}

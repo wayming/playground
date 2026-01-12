@@ -109,7 +109,7 @@ private:
 //     bool stop;
 // };
 
-static ThreadPool pool;
+ThreadPool pool;
 
 template<typename T>
 class FuturePipe {

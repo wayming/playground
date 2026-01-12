@@ -1,0 +1,60 @@
+﻿
+#include <gtest/gtest.h>
+#include <iostream>
+
+// 可选的：自定义测试监听器
+class MyTestListener : public ::testing::EmptyTestEventListener {
+public:
+    void OnTestStart(const ::testing::TestInfo& test_info) override {
+        std::cout << "[ START ] " << test_info.test_suite_name()
+            << "." << test_info.name() << std::endl;
+    }
+
+    void OnTestEnd(const ::testing::TestInfo& test_info) override {
+        std::cout << "[  END  ] " << test_info.test_suite_name()
+            << "." << test_info.name() << std::endl;
+    }
+
+    void OnTestPartResult(const ::testing::TestPartResult& result) override {
+        if (result.failed()) {
+            std::cout << "    [FAILURE] " << result.message() << std::endl;
+        }
+    }
+};
+
+int main(int argc, char** argv) {
+    // 1. 初始化 GoogleTest
+    ::testing::InitGoogleTest(&argc, argv);
+
+    // 2. 禁用输出捕获（关键！）
+    ::testing::GTEST_FLAG(catch_exceptions) = false;
+
+    // 3. 设置其他参数
+    ::testing::GTEST_FLAG(color) = "yes";      // 彩色输出
+    ::testing::GTEST_FLAG(print_time) = true;  // 打印时间
+    ::testing::GTEST_FLAG(break_on_failure) = false; // 不在失败时中断
+
+    // 4. 检查命令行参数（可以覆盖上面的设置）
+    for (int i = 1; i < argc; ++i) {
+        std::string arg = argv[i];
+        if (arg == "--gtest_catch_exceptions=0") {
+            ::testing::GTEST_FLAG(catch_exceptions) = false;
+        }
+        else if (arg == "--gtest_catch_exceptions=1") {
+            ::testing::GTEST_FLAG(catch_exceptions) = true;
+        }
+    }
+
+    // 5. 可选的：添加自定义监听器
+    ::testing::TestEventListeners& listeners =
+        ::testing::UnitTest::GetInstance()->listeners();
+    listeners.Append(new MyTestListener());
+
+    // 6. 运行所有测试
+    int result = RUN_ALL_TESTS();
+
+    // 7. 添加一些统计信息
+    std::cout << "\n=== 测试完成 ===" << std::endl;
+
+    return result;
+}

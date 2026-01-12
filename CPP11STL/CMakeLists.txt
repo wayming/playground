@@ -4,6 +4,10 @@
 cmake_minimum_required(VERSION 3.15)
 project(CPP11STL)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 enable_testing()
 
 # 不设置全局运行时库，交给子项目单独配置
