@@ -1,73 +1,33 @@
-#include <queue>
-#include <chrono>
-#include <functional>
+#include <vector>
+#include <numeric>
+#include <algorithm>
+#include <string>
 
-#include <mutex>
-#include <thread>
-#include <atomic>
-#include <condition_variable>
-
-class Task {
+class SeqGenerator {
 public:
-	Task(std::function<void()> w, int prioriy, std::chrono::steady_clock::time_point s) :
-			work(w), pr(prioriy), start(s) {}
-	bool operator < (const Task& other) const {
-		if (this->pr != other.pr) {
-			return this->pr < other.pr;
-		}
-		else {
-			return this->start > other.start;
-		}
-	}
-	std::chrono::steady_clock::time_point when() { return start; }
-	void fire() { work(); }
+    SeqGenerator(int first, int num) {
+        nums.resize(num);
+        std::iota(nums.begin(), nums.begin() + num, first);
+    }
+
+    std::vector<int> genIntegerSeq() {
+        return nums;
+    }
+
+    std::vector<int> genSquareSeq() {
+        std::vector<int> results;
+        results.resize(nums.size());
+        std::transform(nums.begin(), nums.end(), results.begin(), [](auto x) { return x * x; });
+        return results;
+    }
+
+    std::vector<std::string> genStringSeq(const std::string& base) {
+        std::vector<std::string> results;
+        results.resize(nums.size());
+        std::transform(nums.begin(), nums.end(), results.begin(), [&base](auto x) { return base + std::to_string(x); });
+        return results;
+    }
 private:
-	int pr;
-	std::function<void()> work;
-	std::chrono::steady_clock::time_point start;
-};
+    std::vector<int> nums;
 
-class Scheduler {
-public:
-	void run() {
-		while (!done) {
-			std::cout << "run" << std::endl;
-
-			std::unique_lock<std::mutex> lock(qMutex);
-			if (tasks.empty()) {
-				std::cout << "wait done = " << done << std::endl;
-				qCV.wait(lock, [this]() {
-					return done || !tasks.empty();
-				});
-			}
-			if (tasks.empty()) {
-				continue;
-			}
-
-			auto topTask = tasks.top();
-			if (topTask.when() > std::chrono::steady_clock::now()) {
-				qCV.wait_until(lock, topTask.when());
-				continue;
-			}
-			std::cout << "fire" << std::endl;
-			topTask.fire();
-			tasks.pop();
-			lock.unlock();
-		}
-	}
-
-	void add(std::function<void()> t,
-			 int prioriy,
-			 std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now()) {
-		std::lock_guard<std::mutex> lock(qMutex);
-		tasks.emplace(t, prioriy, start);
-		qCV.notify_one();
-	}
-
-	void stop() { done = true; qCV.notify_all(); }
-private:
-	std::mutex qMutex;
-	std::condition_variable qCV;
-	std::priority_queue<Task> tasks;
-	std::atomic<bool> done = false;
 };

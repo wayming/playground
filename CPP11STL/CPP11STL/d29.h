@@ -21,7 +21,7 @@ class LogFormatter {
 		else if constexpr (std::is_convertible_v<std::string, T>) {
 			return 's';
 		}
-		else if constexpr (std::is_same_v<float，T>) {
+		else if constexpr (std::is_same_v<float,T>) {
 			return 'f';
 		}
 		else {
