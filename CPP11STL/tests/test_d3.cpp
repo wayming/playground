@@ -2,23 +2,23 @@
 #include "../CPP11STL/d3.h"
 
 TEST(ResourceManagementTests, Sanity) {
-	ResourcePool pool(10);
+	ResourcePool pool;
 	{
-		std::shared_ptr<Resource> r0 = pool.AcquireResource(5);
-		r0->Set(std::string("this is a test string"));
+		std::shared_ptr<Resource> r0 = pool.acquireResource(5);
+		r0->fill("this is a test string");
 	}
 	{
-		std::shared_ptr<Resource> r0 = pool.AcquireResource(5);
-		EXPECT_EQ(r0->Get(), std::string("this is a test string"));
+		std::shared_ptr<Resource> r0 = pool.acquireResource(5);
+		EXPECT_EQ(r0->asString(), std::string("this is a test string"));
 	}
-	std::weak_ptr<Resource> wptrRes = pool.AcquireResource(5);
-	std::shared_ptr<Resource> sptrRes = pool.AcquireResource(5);
-	pool.Destroy();
-	EXPECT_EQ(wptrRes.lock()->Get(), std::string("this is a test string"));
-	EXPECT_EQ(sptrRes->Get(), std::string("this is a test string"));
+	std::weak_ptr<Resource> weakRes = pool.acquireResource(5);
+	std::shared_ptr<Resource> sharedRes = pool.acquireResource(5);
+	pool.destroy();
+	EXPECT_EQ(weakRes.lock()->asString(), std::string("this is a test string"));
+	EXPECT_EQ(sharedRes->asString(), std::string("this is a test string"));
 	
-	sptrRes.reset();
-	EXPECT_EQ(wptrRes.expired(), true);
+	sharedRes.reset();
+	EXPECT_EQ(weakRes.expired(), true);
 
 	EXPECT_EQ(1, 1);
 }
