@@ -8,70 +8,59 @@
 #include <chrono>
 #include <memory>
 #include <iostream>
-using TASK_TYPE = std::packaged_task<int()>;
-class ThreadsPool {
+
+class ThreadPool {
+	std::vector<std::thread> threads;
+	std::queue<std::function<void()>> tasks;
+	std::mutex queueMutex;
+	std::condition_variable cond;
+	std::atomic<bool> stop = false;
 public:
-	ThreadsPool(size_t n) {
-		for (int i = 0; i < n; ++i) {
-			this->threads.emplace_back(
-				std::thread(
-					[this]() {
-						while (true) {
-							std::packaged_task<int()> task;
-							{
-								std::unique_lock<std::mutex> l(this->taskQueueMutex);
-								this->taskAvailable.wait(l, [this]() {return !this->taskQueue.empty() || this->complete; });
-
-								// Complete processing
-								if (this->taskQueue.empty() && this->complete) break;
-
-								task = std::move(this->taskQueue.front());
-								this->taskQueue.pop();
-							}
-							task();
-						}
-
+	ThreadPool(int n) {
+		for(int i = 0; i < n; ++i) {
+			threads.emplace_back([this](){
+				while(true) {
+					std::unique_lock<std::mutex> lock(queueMutex);
+					cond.wait(lock, [this]() {return stop || !tasks.empty();});
+					if (stop && tasks.empty()) {
+						std::cout << "task queue drained, exit" << std::endl;
+						break;
 					}
-				)
-			);
+					auto task = std::move(tasks.front());
+					tasks.pop();
+					lock.unlock();
+					task();
+				}
+			});
 		}
 	}
-	~ThreadsPool() {
-		this->complete = true;
-		this->taskAvailable.notify_all();
-		while (true) {
-			{
-				std::lock_guard<std::mutex> l(this->taskQueueMutex);
-				if (this->taskQueue.empty()) break;
-			}
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		}
 
-		for (auto& t : this->threads) {
+	~ThreadPool() {
+		stop = true;
+		cond.notify_all();
+		for(auto& t : threads) {
 			t.join();
 		}
 	}
-
-	std::unique_ptr<std::future<int>> enqueue(std::function<int(int)> call, int arg) {
-		if (this->complete) {
-			std::cout << "thread pool exiting, not accepting new tasks" << std::endl;
-			return std::unique_ptr<std::future<int>>{};
-		}
-
-		std::packaged_task<int()> task(std::bind(call, arg));
-		std::unique_ptr<std::future<int>> fut = std::make_unique<std::future<int>>(task.get_future());
+	ThreadPool(const ThreadPool&) = delete;
+	ThreadPool operator=(const ThreadPool&) = delete;
+	
+	template<typename Func, typename... Args>
+	auto enqueue(Func&& f, Args&&... args) {
+		using returnType = std::invoke_result_t<Func, Args...>;
+		auto task = std::make_shared<std::packaged_task<returnType()>>([f, args...]() mutable {
+			return f(args...);
+		});
+		auto retFuture = task->get_future();
 		{
-			std::lock_guard<std::mutex> l(this->taskQueueMutex);
-			this->taskQueue.emplace(std::move(task));
-			this->taskAvailable.notify_one();
+			std::lock_guard<std::mutex> lock(queueMutex);
+			if (stop) {
+				throw std::runtime_error("threads pool stopped.");
+			}
+			tasks.emplace([task](){(*task)();});
 		}
-		return fut;
-	}
+		cond.notify_one();
 
-private:
-	std::vector<std::thread> threads;
-	std::queue<std::packaged_task<int()>> taskQueue;
-	std::mutex taskQueueMutex;
-	std::condition_variable taskAvailable;
-	std::atomic<bool> complete = false;
+		return retFuture;
+	}
 };

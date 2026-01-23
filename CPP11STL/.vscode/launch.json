@@ -2,17 +2,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug selected CTest (Windows)",
-      "type": "cppvsdbg",
-      "request": "launch",
-      "program": "${cmake.testProgram}",
-      "args": ["${cmake.testArgs}"],
-      "cwd": "${cmake.testWorkingDirectory}",
-      "stopAtEntry": false,
-      "environment": [],
-      "windows": {}
-    },
-    {
       "name": "Debug selected CTest (CodeLLDB)",
       "type": "lldb",
       "request": "launch",
@@ -24,6 +13,17 @@
       "initCommands": [
         "settings set target.inline-breakpoint-strategy always"
       ],
+    },
+    {
+      "name": "Debug selected CTest (Windows)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${cmake.testProgram}",
+      "args": ["${cmake.testArgs}"],
+      "cwd": "${cmake.testWorkingDirectory}",
+      "stopAtEntry": false,
+      "environment": [],
+      "windows": {}
     }
   ]
 }
