@@ -1,28 +1,57 @@
-#include <functional>
+#include <deque>
+#include <tuple>
 #include <chrono>
-#include <thread>
-#include <atomic>
-#include <iostream>
-class CronJob {
+#include <numeric>
+#include <algorithm>
+class PricingStats {
 public:
-	CronJob(std::function<void()> f, int milliInterval) {
-		func = std::move(f);
-		t = std::thread(
-			[milliInterval, this]() {
-				while (run) {
-					try { func(); }
-					catch (std::exception& e) { std::cerr << "Failed to run function. Error: " << e.what() << std::endl; }
-					std::this_thread::sleep_for(std::chrono::milliseconds(milliInterval));
-				}
-			}
-		);
+	PricingStats(size_t timeToLive) : ttl(timeToLive) {}
+	void add(int price) {
+		auto exprireTime = std::chrono::system_clock::now() + std::chrono::seconds(ttl);
+		pricesQueue.emplace_back(std::make_tuple(price, exprireTime));
+		houseKeeping();
 	}
-	void stop() {
-		run = false;
-		t.join();
+	
+	size_t count() {
+		houseKeeping();
+		return pricesQueue.size();
+	}
+
+	int min() {
+		int min = -1;
+		houseKeeping();
+
+		if (pricesQueue.size() == 0) { return min; }
+		min = std::get<0>(pricesQueue.front());
+		std::for_each(pricesQueue.begin(), pricesQueue.end(), [&min](const auto& tup) {min = std::min(std::get<0>(tup), min); });
+		return min;
+	}
+
+	int max() {
+		int max = -1;
+		houseKeeping();
+
+		if (pricesQueue.size() == 0) { return max; }
+		max = std::get<0>(pricesQueue.front());
+		std::for_each(pricesQueue.begin(), pricesQueue.end(), [&max](const auto& tup) {max = std::max(std::get<0>(tup), max); });
+		return max;
+	}
+
+	void houseKeeping() {
+		auto now = std::chrono::system_clock::now();
+		while (!pricesQueue.empty()) {
+			std::chrono::system_clock::time_point exprireTime;
+			std::tie(std::ignore, exprireTime) = pricesQueue.front();
+
+			if (exprireTime < now) {
+				pricesQueue.pop_front();
+			}
+			else {
+				break;
+			}
+		}
 	}
 private:
-	std::function<void()> func;
-	std::thread t;
-	std::atomic<bool> run = true;
+	std::deque<std::tuple<int, std::chrono::system_clock::time_point>> pricesQueue;
+	size_t ttl;
 };

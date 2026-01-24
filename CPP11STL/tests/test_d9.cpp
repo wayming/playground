@@ -1,23 +1,19 @@
 #include <gtest/gtest.h>
 #include "../CPP11STL/d9.h"
-#include <ctime>
-TEST(CronJobTest, Sanity) {
-	CronJob c1([]() {
-		auto now = std::chrono::system_clock::now();
-		std::time_t now_t = std::chrono::system_clock::to_time_t(now);
-		std::cout << "alarm1 at " << ctime(&now_t) << std::endl;
-		}, 100
-	);
+#include <thread>
 
-	CronJob c2([]() {
-		auto now = std::chrono::system_clock::now();
-		std::time_t now_t = std::chrono::system_clock::to_time_t(now);
-		std::cout << "alarm2 at " << ctime(&now_t) << std::endl;
-		}, 150
-	);
-
-	std::this_thread::sleep_for(std::chrono::seconds(3));
-	c1.stop();
-	c2.stop();
-
+TEST(PricingStats, Sanity) {
+	PricingStats stats(1);
+	stats.add(10);
+	stats.add(20);
+	stats.add(30);
+	stats.add(40);
+	stats.add(50);
+	EXPECT_EQ(stats.count(), 5);
+	EXPECT_EQ(stats.min(), 10);
+	EXPECT_EQ(stats.max(), 50);
+	std::this_thread::sleep_for(std::chrono::seconds(1));
+	EXPECT_EQ(stats.count(), 0);
+	EXPECT_EQ(stats.min(), -1);
+	EXPECT_EQ(stats.max(), -1);
 }

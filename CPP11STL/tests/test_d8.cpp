@@ -1,18 +1,24 @@
 #include <gtest/gtest.h>
 #include "../CPP11STL/d8.h"
+#include <ctime>
+#include <memory>
+TEST(CronJobTest, Sanity) {
+	{
+		auto c1 = std::make_unique<CronJob>();
+		c1->Run([]() {
+			auto now = std::chrono::system_clock::now();
+			std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+			std::cout << "alarm1 at " << ctime(&now_t) << std::endl;
+			}, std::chrono::milliseconds(100)
+		);
 
-TEST(EventHub, Sanity) {
-	EventHub hub;
+		c1->Run([]() {
+			auto now = std::chrono::system_clock::now();
+			std::time_t now_t = std::chrono::system_clock::to_time_t(now);
+			std::cout << "alarm2 at " << ctime(&now_t) << std::endl;
+			}, std::chrono::milliseconds(250)
+		);
 
-	Logger l;
-	l.SetLevel(LOG_LEVEL::DEBUG);
-	hub.subscribe([&l](const std::string& message) {
-		l.Log(LOG_LEVEL::DEBUG, message);
-	});
-
-	hub.subscribe([](const std::string& message){
-		std::cout << message << std::endl;
-	});
-
-	hub.publish("this is a test string");
+		std::this_thread::sleep_for(std::chrono::seconds(3));
+	}
 }
