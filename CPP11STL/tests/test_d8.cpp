@@ -3,17 +3,16 @@
 
 TEST(EventHub, Sanity) {
 	EventHub hub;
-	Worker w1("worker1");
-	Worker w2("worker2");
-	Worker w3("worker3");
-	Worker w4("worker4");
 
-	hub.subscribe(&Worker::fire, &w1);
-	hub.subscribe(&Worker::fire, &w2);
-	hub.subscribe(&Worker::fire, &w3);
-	hub.subscribe(&Worker::fire, &w4);
+	Logger l;
+	l.SetLevel(LOG_LEVEL::DEBUG);
+	hub.subscribe([&l](const std::string& message) {
+		l.Log(LOG_LEVEL::DEBUG, message);
+	});
 
-	hub.publish("start");
-	hub.publish("stop");
+	hub.subscribe([](const std::string& message){
+		std::cout << message << std::endl;
+	});
 
+	hub.publish("this is a test string");
 }
