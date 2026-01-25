@@ -3,55 +3,62 @@
 #include <chrono>
 #include <numeric>
 #include <algorithm>
-class PricingStats {
+#include <optional>
+class SlidingWindowPricingStats {
+	std::chrono::system_clock::duration secondsToLive;
+	std::deque<std::tuple<std::chrono::time_point<std::chrono::system_clock>, int>> prices;
 public:
-	PricingStats(size_t timeToLive) : ttl(timeToLive) {}
+	SlidingWindowPricingStats(size_t ttl) : secondsToLive(std::chrono::seconds(ttl)) {}
 	void add(int price) {
-		auto exprireTime = std::chrono::system_clock::now() + std::chrono::seconds(ttl);
-		pricesQueue.emplace_back(std::make_tuple(price, exprireTime));
-		houseKeeping();
-	}
-	
-	size_t count() {
-		houseKeeping();
-		return pricesQueue.size();
-	}
-
-	int min() {
-		int min = -1;
-		houseKeeping();
-
-		if (pricesQueue.size() == 0) { return min; }
-		min = std::get<0>(pricesQueue.front());
-		std::for_each(pricesQueue.begin(), pricesQueue.end(), [&min](const auto& tup) {min = std::min(std::get<0>(tup), min); });
-		return min;
-	}
-
-	int max() {
-		int max = -1;
-		houseKeeping();
-
-		if (pricesQueue.size() == 0) { return max; }
-		max = std::get<0>(pricesQueue.front());
-		std::for_each(pricesQueue.begin(), pricesQueue.end(), [&max](const auto& tup) {max = std::max(std::get<0>(tup), max); });
-		return max;
+		prices.emplace_back(std::chrono::system_clock::now() + secondsToLive, price);
 	}
 
 	void houseKeeping() {
 		auto now = std::chrono::system_clock::now();
-		while (!pricesQueue.empty()) {
-			std::chrono::system_clock::time_point exprireTime;
-			std::tie(std::ignore, exprireTime) = pricesQueue.front();
-
-			if (exprireTime < now) {
-				pricesQueue.pop_front();
-			}
-			else {
+		while(!prices.empty()) {
+			auto& [ttl, price] = prices.front();
+			if (ttl > now) {
 				break;
 			}
+			std::cout << "pop " << price << std::endl;
+			prices.pop_front();
 		}
 	}
-private:
-	std::deque<std::tuple<int, std::chrono::system_clock::time_point>> pricesQueue;
-	size_t ttl;
+
+	std::optional<int> max() {
+		houseKeeping();
+		if (prices.empty()) return std::nullopt;
+		int highestPrice = std::get<1>(prices.front());
+		for(auto& t : prices) {
+			auto& [ttl, price] = t;
+			if (price > highestPrice) highestPrice = price;
+		}
+		return highestPrice;
+	}
+
+	std::optional<int> min() {
+		houseKeeping();
+		if (prices.empty()) return std::nullopt;
+		int lowestPrice = std::get<1>(prices.front());
+		for(auto& t : prices) {
+			auto& [ttl, price] = t;
+			if (price < lowestPrice) lowestPrice = price;
+		}
+		return lowestPrice;
+	}
+
+	size_t count() { houseKeeping(); return prices.size(); }
+
+	std::optional<double> avg() {
+		houseKeeping();
+		if (prices.empty()) return std::nullopt;
+		int count = 0;
+		int all = 0;
+		for(auto& t : prices) {
+			auto& [ttl, price] = t;
+			all += price;
+			count++;
+		}
+		return all/count;
+	}
 };
