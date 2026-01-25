@@ -6,171 +6,57 @@
 #include <iostream>
 #include <algorithm>
 #include <typeinfo>
+#include <vector>
+#include <functional>
+#include <regex>
 
-struct JsonValue;
-struct JsonArray;
-class JsonObject;
-class JsonFormater;
+std::string trim(const std::string& input) {
+	auto isSpace = [](unsigned char c) { return std::isspace(c); };
+	auto begin = std::find_if_not(input.begin(), input.end(), isSpace);
+	auto end = std::find_if_not(input.rbegin(), input.rend(), isSpace).base();
+	if (begin >= end) {
+		return std::string();
+	} else {
+		return std::string(begin, end);
+	}
+}
 
-constexpr char SPACE = ' ';
+std::string toLower(const std::string& input) {
+	std::string result;
+	result.resize(input.size());
+	std::transform(input.begin(), input.end(), result.begin(), [](unsigned char c) { return std::tolower(c); });
+	return result;
+}
 
-using JsonValueType = std::variant<
-	std::monostate,
-	int,
-	std::string,
-	JsonArray,
-	JsonObject>;
+std::string removePunct(const std::string& input) {
+	auto notPunct = [](unsigned char c) { return !std::ispunct(c); };
+	std::string result;
+	// result.resize(input.size());
+	// auto end = std::copy_if(input.begin(), input.end(), result.begin(), isPunct);
+	// result.resize(std::distance(result.begin(), end));
+	std::copy_if(input.begin(), input.end(), std::back_inserter(result), notPunct);
+	return result;
+}
 
-class JsonObject :public std::map<std::string, JsonValue> {
+std::string regexReplace(const std::string& input, const std::regex& r, const std::string& replace) {
+	std::string result;
+	std::regex_replace(std::back_inserter(result), input.begin(), input.end(), r, replace);
+	return result;
+}
+
+class TextProcessPipeLine {
+	std::vector<std::function<std::string(std::string)>> processors;
+
 public:
-	JsonObject() = default;
-	JsonObject(std::initializer_list<std::pair<const std::string, JsonValue>> init) : std::map<std::string, JsonValue>(init) {}
-};
-
-//struct JsonArray {
-//	std::vector<JsonValue> elements;
-//
-//	JsonArray(std::initializer_list<JsonValue> init) : elements(init) {}
-//};
-
-struct JsonArray : std::vector<JsonValue>{
-	using std::vector<JsonValue>::vector;
-
-	// JsonArray(std::initializer_list<JsonValue> init) : std::vector<JsonValue>(init) {}
-};
-
-struct JsonValue {
-	JsonValueType value;
-	JsonValue() = default;
-	~JsonValue() = default;
-	JsonValue(const JsonValue& other) : value(other.value) {}
-	JsonValue(JsonValue&& other) noexcept : value(std::move(other.value)) {}
-	JsonValue& operator=(const JsonValue& other) {
-		if (&other != this) {
-			value = other.value;
-		}
+	TextProcessPipeLine& addProcessor(const std::function<std::string(std::string)>& p) {
+		processors.emplace_back(p);
 		return *this;
 	}
-	JsonValue& operator=(JsonValue&& other) {
-		if (&other != this) {
-			value = std::move(other.value);
+	std::string run(const std::string& input) {
+		std::string result = input;
+		for (auto& p : processors) {
+			result = p(result);
 		}
-		return *this;
+		return result;
 	}
-
-	//JsonValue(std::initializer_list<JsonValue> v) : value(JsonArray(v)) {}
-
-	JsonValue(const int v) : value(v) {}
-	JsonValue(const char* v) : value(std::string(v)) {}
-	JsonValue(const std::string& v) : value(v) {}
-	JsonValue(JsonArray&& v) : value(std::move(v)) {}
-	JsonValue(JsonObject&& v) : value(std::move(v)) {}
-
-
-};
-
-class JsonFormater {
-public:
-	JsonFormater(int indent = 2):indentSize(indent) {}
-	void printIndent(int level) {
-		ss << std::string(level * indentSize, SPACE);
-	}
-	std::string prettyJson(const JsonObject& json, int level = 0) {
-		printIndent(level);
-		ss << "{\n";
-		for (auto it = json.begin(); it != json.end();) {
-			printIndent(level+1);
-			ss << '"' << it->first << '"' << ":";
-			printJsonValue(it->second, level + 1);
-			if (++it != json.end()) ss << ',' << '\n';
-		}
-		printIndent(level);
-		ss << '}';
-		return ss.str();
-	}
-
-	void printJsonValue(const JsonValue& val, int level) {
-
-
-		if (std::holds_alternative<std::monostate>(val.value)) {
-			ss << "NULL";
-		}
-		else if (std::holds_alternative<int>(val.value)) {
-			ss << std::get<int>(val.value);
-		}
-		else if (std::holds_alternative<std::string>(val.value)) {
-			ss << '"' << std::get<std::string>(val.value) << '"';
-		}
-		else if (std::holds_alternative<JsonArray>(val.value)) {
-			auto& value = std::get<JsonArray>(val.value);
-			ss << "[\n";
-			for (size_t idx = 0; idx < value.size(); ++idx) {
-				//std::visit([this, level](const auto& value) {
-				//	using T2 = std::decay_t<decltype(value)>;
-				//	if constexpr (!std::is_same_v < T2, JsonObject) printIndent(level+1);
-				//}, value.elements[idx]);
-				const JsonValue& elem = value[idx];
-				if (!std::holds_alternative<JsonObject>(elem.value)) {
-					printIndent(level + 1);
-				}
-				printJsonValue(value[idx], level + 1);
-				if (idx < value.size() - 1) {
-					ss << ',';
-				}
-				ss << '\n';
-			}
-			printIndent(level);
-			ss << ']';
-			ss << '\n';
-		}
-		else if (std::holds_alternative<JsonObject>(val.value)) {
-			auto& value = std::get<JsonObject>(val.value);
-			prettyJson(value, level);
-		}
-
-	}
-
-	//void printJsonValue(const JsonValue& val, int level) {
-	//	std::visit([this, level](const auto& value) {
-	//		using T = std::decay_t<decltype(value)>;
-
-	//		if constexpr (std::is_same_v<T, std::monostate>) {
-	//			ss << "NULL";
-	//		}
-	//		else if constexpr (std::is_same_v<T, int>) {
-	//			ss << value;
-	//		}
-	//		else if constexpr (std::is_same_v<T, std::string>) {
-	//			ss << '"' << value << '"';
-	//		}
-	//		else if constexpr (std::is_same_v<T, JsonArray>) {
-	//			ss << "[\n";
-	//			for (size_t idx = 0; idx < value.elements.size(); ++idx) {
-	//				//std::visit([this, level](const auto& value) {
-	//				//	using T2 = std::decay_t<decltype(value)>;
-	//				//	if constexpr (!std::is_same_v < T2, JsonObject) printIndent(level+1);
-	//				//}, value.elements[idx]);
-	//				const JsonValue& elem = value.elements[idx];
-	//				if (!std::holds_alternative<JsonObject>(elem.value)) {
-	//					printIndent(level + 1);
-	//				}
-	//				printJsonValue(value.elements[idx], level + 1);
-	//				if (idx < value.elements.size() - 1) {
-	//					ss << ',';
-	//				}
-	//				ss << '\n';
-	//			}
-	//			printIndent(level);
-	//			ss << ']';
-	//			ss << '\n';
-	//		}
-	//		else if constexpr (std::is_same_v < T, JsonObject>) {
-	//			prettyJson(value, level);
-	//		}
-	//		}, val.value);
-	//}
-
-private:
-	std::stringstream ss;
-	int indentSize = 2;
 };
