@@ -29,6 +29,9 @@ TEST(CommandRunnerTest, Sanity) {
 	parser.addCommand("ADD 3 5");
 	parser.addCommand("MULT 3 5");
 	parser.addCommand("ECHO TESTSTRING");
-	parser.dump();
-	parser.eval();
+	for(const auto& v : parser.eval()) {
+		std::visit([](auto&& arg) {
+			std::cout << arg << std::endl;
+		}, v);
+	}
 }
