@@ -3,27 +3,27 @@
 #include <functional>
 #include <string>
 
-auto cmp = [](const auto& a, const auto& b) {
+using TaskType = std::tuple<int, std::function<void()>>;
+auto cmp = [](const TaskType& a, const TaskType& b) {
 	return std::get<0>(a) < std::get<0>(b);
 };
 
-struct TaskQueue {
-	using taskFunc = std::function<void(int)>;
-	void submit(int prioriy, taskFunc func) {
-		tasks.emplace(prioriy, func);
+class TaskQueue {
+	std::priority_queue<TaskType, std::vector<TaskType>, decltype(cmp)> tasks{cmp};
+public:
+	void submit(int p, std::function<void(int)> f, int param) {
+		tasks.emplace(p, [param, f, p](){
+			std::cout << "Invoke task for priority " << p << std::endl;
+			f(param);
+		});
+		return;
 	}
 	void run() {
-		while (!tasks.empty()) {
-			int p;
-			taskFunc f;
-			std::tie(p, f) = tasks.top();
+		while(!tasks.empty()) {
+			auto&[priority, func] = tasks.top();
+			func();
 			tasks.pop();
-			f(p);
 		}
+		return;
 	}
-
-	std::priority_queue<
-		std::tuple<int, taskFunc>,
-		std::vector<std::tuple<int, taskFunc>>,
-		decltype(cmp)> tasks{cmp};
 };
