@@ -14,18 +14,20 @@ void trim(std::string& src) {
 }
 
 std::optional<std::string> extractSection(std::string& src) {
-    std::regex e("\\[(.*)\\]");
+    static const std::regex e(R"(\[(\w+)\])");
     std::smatch sm;
-    std::regex_match(src.cbegin(), src.cend(), sm, e);
-    if (sm.size() == 1) return sm.str(0);
+    if (std::regex_match(src, sm, e)) {
+        return sm.str(1);
+    }
     return std::nullopt;
 }
 
 std::optional<std::pair<std::string, std::string>> extractConfig(std::string& src) {
-    std::regex e("(\\w)\\s+=\\s+(\\w)");
+    static const std::regex e(R"((\w+)\s+=\s+([^\s]+))");
     std::smatch sm;
-    std::regex_match(src.cbegin(), src.cend(), sm, e);
-    if (sm.size() == 2) return std::make_pair<std::string, std::string>(sm.str(0), sm.str(1));
+    if (std::regex_match(src.cbegin(), src.cend(), sm, e)) {
+        return std::make_pair(sm.str(1), sm.str(2));
+    }
     return std::nullopt;
 }
 
@@ -47,7 +49,7 @@ public:
             auto section = extractSection(line);
             if (section) { thisSection = section.value(); continue; }
             auto kvPair = extractConfig(line);
-            if (kvPair) config[thisSection].emplace(kvPair.value());
+            if (!thisSection.empty() && kvPair) config[thisSection].emplace(kvPair.value());
         }
 
         return config;
