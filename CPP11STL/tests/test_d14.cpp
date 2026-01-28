@@ -8,30 +8,37 @@
 #include <chrono>
 TEST(QueueSafeTest, Sanity) {
 	QueueSafe q;
-	std::atomic<bool> stop = false;
 	std::vector<std::thread> consumers;
 	for (int i = 0; i < 2; i++) {
-		consumers.emplace_back([&q, &stop]() {
-			while (!stop) {
+		consumers.emplace_back([&q]() {
+			while (true) {
 				try {
 					std::cout << "consumer-" << std::this_thread::get_id() << ":" << q.pop() << std::endl;
-					std::this_thread::sleep_for(std::chrono::milliseconds(100));
+					std::this_thread::sleep_for(std::chrono::milliseconds(10));
 				} catch(QueueEmptyException& e) {
 					// ignore queue empty error
 					std::cout << e.what() << std::endl;
+				} catch(QueueClosedException& e) {
+					std::cout << e.what() << std::endl;
+					break;
 				}
 			}
 		});
 
 	}
 	for (int i = 0; i < 2; i++) {
-		consumers.emplace_back([&q, &stop]() {
-			while (!stop) {
-				std::string message;
-				if (q.try_pop(message)) {
-					std::cout << "consumer-" << std::this_thread::get_id() << ":" << message << std::endl;
+		consumers.emplace_back([&q]() {
+			while (true) {
+				try {
+					std::string message;
+					if (q.try_pop(message)) {
+						std::cout << "consumer-" << std::this_thread::get_id() << ":" << message << ":try_pop" << std::endl;
+					}
+					std::this_thread::sleep_for(std::chrono::milliseconds(10));
+				} catch(QueueClosedException& e) {
+					std::cout << e.what() << std::endl;
+					break;
 				}
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 			}
 		});
 	}
@@ -51,7 +58,6 @@ TEST(QueueSafeTest, Sanity) {
 	}
 
 	q.graceShutdown();
-	stop = true;
 
 	for (auto& c : consumers) {
 		c.join();

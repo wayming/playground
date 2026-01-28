@@ -30,10 +30,9 @@ password = secret
 timeout = 30)" << std::endl;
 	}
 
-	ConfigReader r;
-	r.parse("config1.txt");
-	r.dump();
+	ConfigReader reader;
+	auto config = reader.parse("config1.txt");
 
-	ASSERT_EQ(r["network"].at("host"), "127.0.0.1");
-	ASSERT_EQ(r["database"].at("password"), "secret");
+	ASSERT_EQ(config["network"]["host"], "127.0.0.1");
+	ASSERT_EQ(config["database"]["password"], "secret");
 }

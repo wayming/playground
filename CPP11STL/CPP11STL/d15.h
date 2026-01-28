@@ -3,66 +3,53 @@
 #include <fstream>
 #include <regex>
 #include <algorithm>
-
-std::string trim(const std::string& src) {
-    auto begin = src.find_first_not_of(' ');
-    if (begin == std::string::npos) return "";
-    
+#include <optional>
+void trim(std::string& src) {
     auto end = src.find_last_not_of(' ');
-    if (end == std::string::npos) return "";
+    if (end == std::string::npos) src.clear();
+    src.erase(end+1);
 
-    return src.substr(begin, end-begin+1);
+    auto start = src.find_first_not_of(' ');
+    src.erase(0, start);
 }
 
-void trim(std::string& str) {
-    auto notSpace = [](char c) {return !std::isspace(c); };
-    str.erase(str.begin(), std::find_if(str.begin(), str.end(), notSpace)); // trim left
-    str.erase(std::find_if(str.rbegin(), str.rend(), notSpace).base(), str.end()); // trim right
+std::optional<std::string> extractSection(std::string& src) {
+    std::regex e("\\[(.*)\\]");
+    std::smatch sm;
+    std::regex_match(src.cbegin(), src.cend(), sm, e);
+    if (sm.size() == 1) return sm.str(0);
+    return std::nullopt;
 }
 
+std::optional<std::pair<std::string, std::string>> extractConfig(std::string& src) {
+    std::regex e("(\\w)\\s+=\\s+(\\w)");
+    std::smatch sm;
+    std::regex_match(src.cbegin(), src.cend(), sm, e);
+    if (sm.size() == 2) return std::make_pair<std::string, std::string>(sm.str(0), sm.str(1));
+    return std::nullopt;
+}
+
+using Config = std::unordered_map<std::string, std::unordered_map<std::string, std::string>>;
 class ConfigReader {
 public:
-    using SECTION = std::unordered_map<std::string, std::string>;
-    void parse(const std::string& file) {
-        std::ifstream fs(file, std::iostream::in);
-        if (!fs.good()) {
-            throw std::runtime_error("Failed to open file " + file);
-        }
+    Config parse(const std::string& file) {
+        std::ifstream s(file);
+        if (!s.good()) throw std::runtime_error(std::string("failed to read file ") + file);
+        
+        Config config;
+        std::string thisSection;
+        while (s.good()) {
+            std::string line;
+            std::getline(s, line);
 
-        std::string line;
-        std::regex keyPattern(R"(\[(.*)\])");
-        std::regex valPattern(R"((.*)\s+=\s+(.*))");
-        std::smatch matches;
-        std::string key;
-        while(std::getline(fs, line)) {
             trim(line);
-            std::regex_match(line, matches, keyPattern);
-            if (matches.size() == 2) {
-                key = matches[1];
-                continue;
-            }
-
-            std::regex_match(line, matches, valPattern);
-            if (matches.size() == 3) {
-                config[key].emplace(matches[1], matches[2]);
-                continue;
-            }
+            if (line.empty()) continue;
+            auto section = extractSection(line);
+            if (section) { thisSection = section.value(); continue; }
+            auto kvPair = extractConfig(line);
+            if (kvPair) config[thisSection].emplace(kvPair.value());
         }
-    }
 
-    const SECTION& operator[](const std::string& key) {
-        return config.at(key);
+        return config;
     }
-
-    void dump() {
-        for(auto& [k, v] : config) {
-            std::cout << "[" << k << "]" << std::endl;
-            for (auto& [vk, vv] : v) {
-                std::cout << vk << " => " << vv << std::endl;
-            }
-        }
-    }
-
-private:
-    std::unordered_map<std::string, SECTION> config;
 };
