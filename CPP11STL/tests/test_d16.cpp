@@ -14,16 +14,16 @@ std::string now() {
 
 TEST(ThreadSafeLogger, SingleThread) {
 	std::stringstream ss;
-	ThreadSafeLogger log(ss, LOG_LEVEL::DEBUG);
+	ThreadSafeLogger log(ss, LOG_LEVEL::INFO);
 
 	auto worker = [&log]() {
-		log.logInfo("server start at ", now());
+		log.info("server start at ", now());
 		std::this_thread::sleep_for(std::chrono::milliseconds(rand()%100));
-		log.logInfo("request start at ", now());
+		log.debug("request start at ", now());
 		std::this_thread::sleep_for(std::chrono::milliseconds(rand()%100));
-		log.logInfo("request done at ", now());
+		log.debug("request done at ", now());
 		std::this_thread::sleep_for(std::chrono::milliseconds(rand()%100));
-		log.logInfo("server stop at ", now());
+		log.info("server stop at ", now());
 	};
 
 	std::vector<std::thread> threads;
