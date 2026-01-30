@@ -11,15 +11,15 @@
 
 TEST(SubjectObserverTest, Sanity) {
 	Subject s;
-	auto ob1 = std::make_shared<SimplePrinterObserver>();
+	auto ob1 = std::make_shared<ReversePrinterObserver>();
 	auto ob2 = std::make_shared<TimeObserver>();
 	{
-		auto ob3 = std::make_shared<SimplePrinterObserver>();
+		auto ob3 = std::make_shared<ReversePrinterObserver>();
 		auto ob4 = std::make_shared<TimeObserver>();
-		s.registObserver(ob1);
-		s.registObserver(ob2);
-		s.registObserver(ob3);
-		s.registObserver(ob4);
+		s.add(ob1);
+		s.add(ob2);
+		s.add(ob3);
+		s.add(ob4);
 
 		s.notify("in scope");
 	}

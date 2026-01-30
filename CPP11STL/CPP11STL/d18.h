@@ -9,41 +9,41 @@ class Observer {
 public:
     virtual void onNotify(const std::string& message) = 0;
 };
-
 class TimeObserver : public Observer {
 public:
     void onNotify(const std::string& message) override {
-        auto now = std::chrono::system_clock::now();
-        time_t ts = std::chrono::system_clock::to_time_t(now);
-        std::cout << ctime(&ts) << " " << message << std::endl;
+        auto tm = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        auto tmStr = std::string(std::ctime(&tm));
+        tmStr.erase(std::remove(tmStr.begin(), tmStr.end(), '\n'), tmStr.end());
+        std::cout << tmStr << " " << message << std::endl;
     }
 };
-
-class SimplePrinterObserver : public Observer {
+class ReversePrinterObserver : public Observer {
 public:
     void onNotify(const std::string& message) override {
-        std::cout << "simple " << message << std::endl;
+        auto msg = message;
+        std::reverse(msg.begin(), msg.end());
+        std::cout << msg << std::endl;
     }
 };
 
 
 class Subject {
+    std::vector<std::weak_ptr<Observer>> obs;
 public:
-    void registObserver(std::shared_ptr<Observer> ob) {
-        obs.emplace_back(ob);
+    void add(std::weak_ptr<Observer> ob) {
+        obs.emplace_back(std::move(ob));
     }
-
     void notify(const std::string& message) {
-        obs.erase(
-            std::remove_if(obs.begin(), obs.end(), [](auto& ob) { return ob.expired(); }),
-            obs.end());
-        for (auto& ob : obs) {
-            auto obShared = ob.lock();
-            if(obShared) {
-                obShared->onNotify(message);
+        auto iter = obs.begin();
+        while(iter != obs.end()) {
+            auto ob = iter->lock();
+            if (ob) {
+                ob->onNotify(message);
+                ++iter;
+            } else {
+                iter = obs.erase(iter);
             }
         }
     }
-private:
-    std::vector<std::weak_ptr<Observer>> obs;
 };
