@@ -6,54 +6,75 @@
 template <size_t X, size_t Y, typename T>
 class Matrix {
     using RowType = std::array<T, Y>;
-    using MarixType = std::array<RowType, X>;
-    MarixType data;
+    using MatrixType = std::array<RowType, X>;
+    MatrixType data = {};
 
 public:
+    Matrix() = default;
     Matrix(std::initializer_list<std::initializer_list<T>> init) {
         if (init.size() != X) {
             std::stringstream ss;
-            ss << "Invalid number of rows, " << X << " expected, " << inti.size() << " got." << std::endl;
-            return std::runtime_error(ss.str());
+            ss << "Invalid number of rows, " << X << " expected, " << init.size() << " got." << std::endl;
+            throw std::runtime_error(ss.str());
         }
         size_t rowIdx = 0;
         for (auto& row : init) {
             if (row.size() > Y) {
                 std::stringstream ss;
                 ss << "Invalid number of columns, " << Y << " expected, " << row.size() << " got." << std::endl;
-                return std::runtime_error(ss.str());
+                throw std::runtime_error(ss.str());
             }
-            std::move(row.begin(), row.end(), data[rowIdx].begin());
+            // Element in initializer_list is const type. Can not be moved. Degraded to copy.
+            std::copy(row.begin(), row.end(), data[rowIdx].begin());
             rowIdx++;
         }
     }
 
     T& operator()(size_t x, size_t y) { 
-        if (x > X || y > Y) return runtime_error("Invalid position.")
+        if (x >= X || y >= Y) throw std::out_of_range("Invalid position.");
         return data[x][y];
     }
     const T& operator()(size_t x, size_t y) const {
-        return this->(x, y);
+        return const_cast<Matrix*>(this)->operator()(x,y);
     }
 
-    Matrix operator * (const T& n) {
-        MarixType result;
-        for (auto& row : data) {
-            for (auto& col : row) {
+    Matrix operator* (const T& n) {
+        Matrix result = *this;
+        for(auto& row : result.data) {
+            for(auto& col : row) {
                 col *= n;
             }
         }
-        return *this;
+        return result;
     }
 
-    Matrix
+    Matrix operator*(const Matrix& other) {
+        Matrix result;
+        for(int x = 0; x < X; ++x) {
+            for(int y = 0; y < Y; ++ y) {
+                result.data[x][y] = data[x][y] * other.data[x][y];
+            }
+        }
+        return result;
+    }
 
-    friend std::ostream& operator << (std::ostream& os, const Matrix m) {
+    Matrix operator+(const Matrix& other) {
+        Matrix result;
+        for(int x = 0; x < X; ++x) {
+            for(int y = 0; y < Y; ++ y) {
+                result.data[x][y] = data[x][y] + other.data[x][y];
+            }
+        }
+        return result;
+    }
+
+
+    friend std::ostream& operator<< (std::ostream& os, const Matrix& m) {
         os << "[ " << std::endl;
-        for (auto& row : m) {
-            os << "[ "
+        for (auto& row : m.data) {
+            os << "  [ ";
             for (auto& col : row) {
-                os << col << ", "
+                os << col << ", ";
             }
             os << "]" << std::endl;
         }
