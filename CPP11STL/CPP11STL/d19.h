@@ -1,45 +1,49 @@
+#include <deque>
 #include <list>
 #include <unordered_map>
-
+#include <tuple>
 template <typename K, typename V>
 class LRUCache {
+    std::list<K> keysList;
+    std::unordered_map<K, V> values;
+    std::unordered_map<K, typename std::list<K>::iterator> iters;
+    size_t capacity;
 public:
-    LRUCache(size_t capacity) : cap(capacity) {}
-
+    LRUCache(size_t n) : capacity(n) {}
     void put(const K& k, const V& v) {
-        auto it = lookup.find(k);
-        if (it != lookup.end()) {
-            cache.splice(cache.begin(), cache, it->second);
-            // lookup[k] = std::prev(cache.end()); // iterator of the element is not changed
-            return;
-        }
-
-        cache.emplace_front(k, v);
-        lookup[k] = cache.begin();
-        if (cache.size() > cap) {
-            lookup.erase(cache.back().first);
-            cache.pop_back();
+        // auto& [k, v] = kv;
+        auto iter = iters.find(k);
+        if (iter ==iters.end()) {
+            // new key
+            while(keysList.size() >= capacity) {
+                iters.erase(keysList.front());
+                values.erase(keysList.front());
+                keysList.pop_front();
+            }
+            keysList.emplace_back(k);
+            values.emplace(k, v);
+            iters.emplace(k, std::prev(keysList.end()));
+        } else {
+            // existing key
+            keysList.splice(keysList.end(), keysList, iter->second);
+            values[k] = v;
         }
     }
 
-    V& get(const K& k) {
-        auto it = lookup.find(k);
-        if (it != lookup.end()) {
-            cache.splice(cache.begin(), cache, it->second);
-            return cache.front().second;
-        } else {
-            throw std::runtime_error("no value found");
+    V get(const K& k) {
+        auto iter = iters.find(k);
+        if(iter == iters.end()) {
+            throw std::range_error("invalid key");
         }
+        
+        keysList.splice(keysList.end(), keysList, iter->second);
+        return values.at(k);
     }
 
     void print() {
-        for (auto& e : cache) {
-            std::cout << "(" << e.first << "," << e.second << ") ";
+        std::cout << "order(new-old)" << std::endl;
+        for(auto rit = keysList.crbegin(); rit != keysList.crend(); ++rit) {
+            std::cout << "[" << *rit << "] => [" << values.at(*rit) << "]" << std::endl; 
         }
-        std::cout << std::endl;
     }
-private:
-    std::list<std::pair<K, V>> cache;
-    std::unordered_map<K, typename std::list<std::pair<K,V>>::iterator> lookup;
-    size_t cap = 0;
 };
