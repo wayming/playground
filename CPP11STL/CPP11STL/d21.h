@@ -6,55 +6,56 @@
 #include <numeric>
 
 class StockDataParser {
+    std::unordered_map<std::string, std::vector<std::string>> data;
 public:
     std::vector<std::string> split(const std::string& str) {
         std::vector<std::string> tokens;
         size_t begin = 0;
-        while(begin != std::string::npos) {
-            auto end = str.find(',', begin);
-            if (end == std::string::npos) break;
+        auto end = str.find(',');
+        while(end != std::string::npos) {
             tokens.emplace_back(str.substr(begin, end - begin));
-            begin = end+1;
+            begin = end + 1;
+            end = str.find(',', begin);
         }
-        tokens.emplace_back(str.substr(begin));
+        if (begin != std::string::npos) {
+            tokens.emplace_back(str.substr(begin, str.size() - begin));
+        } else {
+            tokens.emplace_back("");
+        }
+
         return tokens;
     }
 
-    void header(const std::string& str) {
-        size_t idx = 0;
-        for (auto& key : split(str)) {
-            cols[key] = idx++;
+    void parse(const std::string& filePath) {
+        std::ifstream in(filePath);
+        bool first = true;
+        std::vector<std::string> keys;
+        while (in.good()) {
+            std::string line;
+            std::getline(in, line);
+            if (line.length() > 0) {
+                auto tokens = split(line);
+                if (first) {
+                    first = false;
+                    keys = std::move(tokens);
+                } else {
+                    if (tokens.size() != keys.size()) {
+                        throw std::runtime_error("invalid number of columns");
+                    }
+                    for(int i = 0; i < keys.size(); ++i) {
+                        data[keys.at(i)].emplace_back(std::move(tokens.at(i)));
+                    }
+                }
+            }
         }
     }
-    void parse(const std::string& filePath, const std::string& colName) {
-        std::ifstream s(filePath);
-        if (!s.good()) throw std::runtime_error("Failed to open file " + filePath);
+
+    std::vector<std::string> get(const std::string& key) {
+        auto iter = data.find(key);
+        if (iter == data.end()) {
+            throw std::runtime_error("invalid key");
+        }
         
-        std::string row;
-        std::getline(s, row);
-        header(row);
-        if (cols.find(colName) == cols.end()) throw std::runtime_error("Invalid columen name " + colName);
-
-        while(s.good() && !s.eof()) {
-            std::getline(s, row);
-            if (row.length() == 0) {
-                continue; // skip empty line
-            }
-            
-            try {
-                targets.push_back(std::stod(split(row)[cols.at(colName)]));
-            } catch (std::exception) {
-                std::cerr << "bad format for line " << row << std::endl;
-                throw;
-            }
-        }
-
-        std::cout << "sum=" << std::accumulate(targets.begin(), targets.end(), 0)
-                  << ", min=" << *std::min_element(targets.begin(), targets.end())
-                  << ", max=" << *std::max_element(targets.begin(), targets.end()) << std::endl;
-    
+        return iter->second;
     }
-private:
-    std::vector<double> targets;
-    std::unordered_map<std::string, size_t> cols;
 };
