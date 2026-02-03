@@ -2,3 +2,8 @@ CPP11STL/out/build/*
 /CPP11STL/.vs/CPP11STL.slnx/v18
 /CPP11STL/.vs/CPP11STL.slnx/FileContentIndex
 /.vs
+pybook/.venv
+.gitignore
+pybook/pybook/__pycache__
+pybook/tests/__pycache__
+pythonw6/__pycache__

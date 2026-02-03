@@ -1,3 +1,20 @@
 {
-    "cmake.sourceDirectory": "/home/way/Workspace/playground/CPP11STL"
+    "cmake.sourceDirectory": "/home/way/Workspace/playground/CPP11STL",
+    "python.defaultInterpreterPath": ".venv/bin/python",
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "pybook"
+    ],
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+        "source.organizeImports.ruff": "explicit",
+        "source.fixAll.ruff": "explicit"
+        }
+    },
+    "notebook.formatOnSave.enabled": true,
+    "terminal.integrated.defaultProfile.osx": "ksh"
+
 }

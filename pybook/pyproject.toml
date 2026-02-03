@@ -1,0 +1,25 @@
+[project]
+name = "pybook"
+version = "0.1.0"
+description = "pybook"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+select = ["E", "F", "I", "UP", "B", "SIM", "ARG"]
+ignore = []
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra -q --tb=short"
+testpaths = ["tests"]
+pythonpath = "."
