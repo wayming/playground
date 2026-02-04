@@ -16,7 +16,8 @@
             "module": "pytest",
             "args": [
                 "${file}",
-                "-v"
+                "-v",
+                "-s"
             ],
             "console": "integratedTerminal"
         }
