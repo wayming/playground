@@ -13,8 +13,9 @@ def test_counter_parallel():
     print(f"mt total elapsed {end - begin} seconds")
 
     begin = time.perf_counter()
-    print(t.counter_mp(20, 100000))
     end = time.perf_counter()
+    print(t.counter_mp(20, 100000))
+    print(t.counter_mp(20, 100000))
     print(f"mp total elapsed {end - begin} seconds")
 
     begin = time.perf_counter()
