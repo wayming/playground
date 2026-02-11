@@ -1,4 +1,4 @@
-import pybook.pybook.t24 as t
+import pybook.t24 as t
 
 
 def test_order_by():

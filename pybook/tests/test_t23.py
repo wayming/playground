@@ -1,4 +1,4 @@
-import pybook.pybook.t23 as t
+import pybook.t23 as t
 
 
 def test_avg_by_user():
