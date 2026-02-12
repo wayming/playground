@@ -117,3 +117,12 @@ def t76_max_profit(prices: list):
                 continue
     legs.append((low, high)) if up else legs.append((high, low))
     return legs
+
+
+def t77_bubble_sort(nums: list):
+    length = len(nums)
+    while length > 1:
+        for idx in range(length - 1):
+            if nums[idx] > nums[idx + 1]:
+                nums[idx], nums[idx + 1] = nums[idx + 1], nums[idx]
+        length -= 1

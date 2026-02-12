@@ -42,3 +42,9 @@ def test_t76_max_profit():
         (2, 6),
         (6, 4),
     ]
+
+
+def test_t77_bubble_sort():
+    nums = [7, 1, 5, 8, 3, 2, 6, 4]
+    t.t77_bubble_sort(nums)
+    assert nums == [1, 2, 3, 4, 5, 6, 7, 8]
