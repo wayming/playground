@@ -48,3 +48,8 @@ def test_t77_bubble_sort():
     nums = [7, 1, 5, 8, 3, 2, 6, 4]
     t.t77_bubble_sort(nums)
     assert nums == [1, 2, 3, 4, 5, 6, 7, 8]
+
+
+def test_t78_producers_consumers():
+    processer = t.T78(5, 10, 1000)
+    processer.fire()

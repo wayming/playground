@@ -1,4 +1,7 @@
 import collections
+import queue
+import threading
+import time
 
 
 def t71_top_k(nums: list, topn):
@@ -126,3 +129,61 @@ def t77_bubble_sort(nums: list):
             if nums[idx] > nums[idx + 1]:
                 nums[idx], nums[idx + 1] = nums[idx + 1], nums[idx]
         length -= 1
+
+
+class T78:
+    def __init__(self, p, c, m):
+
+        self.messages_per_producer = m
+        self.consumers = []
+        self.producers = []
+        self.queue = queue.Queue()
+        self.run = threading.Event()
+        self.complete = threading.Event()
+        self.producer(p)
+        self.consumer(c)
+        pass
+
+    def put(self, num_messages: int):
+        self.run.wait()
+        for m in range(num_messages):
+            self.queue.put(m)
+
+    def get(self):
+        self.run.wait()
+        while not self.complete.is_set() and not self.queue.empty():
+            try:
+                print(
+                    f"{threading.current_thread().name} - {self.queue.get(timeout=2)}"
+                )
+                self.queue.task_done()
+            except queue.Empty:
+                print("ignore queue empty exception")
+                time.sleep(0.1)
+                continue
+
+    def producer(self, n):
+        for _ in range(n):
+            self.producers.append(
+                threading.Thread(target=self.put, args=(self.messages_per_producer,))
+            )
+
+    def consumer(self, n):
+        for _ in range(n):
+            self.consumers.append(threading.Thread(target=self.get))
+
+    def fire(self):
+        for t in self.producers:
+            t.start()
+        for t in self.consumers:
+            t.start()
+        self.run.set()
+
+        for t in self.producers:
+            t.join()
+
+        self.queue.join()
+        self.complete.set()
+
+        for t in self.consumers:
+            t.join()
