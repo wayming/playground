@@ -12,3 +12,33 @@ def test_t72_factorial():
 def test_t73_islands():
     g = [[1, 1, 0, 0], [1, 0, 0, 1], [0, 0, 1, 1], [1, 0, 0, 0]]
     assert t.t73_islands(g) == 3
+
+
+def test_t74_shortest_path():
+    g = [[1, 1, 0, 0], [1, 0, 0, 1], [0, 0, 1, 1], [1, 0, 0, 0]]
+    assert t.t74_shortest_path(g) == -1
+    g = [[0, 1, 0, 0], [1, 0, 0, 1], [0, 0, 1, 1], [1, 0, 0, 0]]
+    assert t.t74_shortest_path(g) == -1
+    g = [[0, 1, 0, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 0, 0, 0]]
+    assert t.t74_shortest_path(g) == 7
+
+
+def test_t74_shortest_path2():
+    g = [[1, 1, 0, 0], [1, 0, 0, 1], [0, 0, 1, 1], [1, 0, 0, 0]]
+    assert t.t74_shortest_path2(g) == -1
+    g = [[0, 1, 0, 0], [1, 0, 0, 1], [0, 0, 1, 1], [1, 0, 0, 0]]
+    assert t.t74_shortest_path2(g) == -1
+    g = [[0, 1, 0, 0], [0, 0, 1, 1], [0, 1, 0, 0], [0, 0, 0, 0]]
+    assert t.t74_shortest_path2(g) == 7
+    g = [[0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1], [1, 0, 0, 0]]
+    assert t.t74_shortest_path2(g) == 7
+
+
+def test_t76_max_profit():
+    assert t.t76_max_profit([7, 1, 5, 8, 3, 2, 6, 4]) == [
+        (7, 1),
+        (1, 8),
+        (8, 2),
+        (2, 6),
+        (6, 4),
+    ]

@@ -36,3 +36,84 @@ def t73_islands(grid):
                 count += 1
                 dfs(x, y)
     return count
+
+
+def t74_shortest_path(grid: list[list[int]]):
+    rows = len(grid)
+    cols = len(grid[0])
+
+    def bfs(root: set):
+        x, y = root
+        print(f"{x} - {y}")
+        if x == rows - 1 and y == cols - 1:
+            return 1  # End
+
+        if grid[x][y] == 1:
+            return -1  # Blocked
+        right, down = -1, -1
+        if y < cols - 1:
+            right = bfs((x, y + 1))
+        if x < rows - 1:
+            down = bfs((x + 1, y))
+        print(f"{right} - {down}")
+        if right < 0 and down < 0:
+            return -1
+
+        if right < 0:
+            return 1 + down
+        elif down < 0:
+            return 1 + right
+        else:
+            return 1 + min(right, down)
+
+    return bfs((0, 0))
+
+
+def t74_shortest_path2(grid: list[list[int]]):
+    processed = collections.deque(tuple())
+    if grid[0][0] == 1:
+        return -1
+    processed.append((0, 0, 1))
+    rows = len(grid)
+    cols = len(grid[0])
+    while processed:
+        (x, y, v) = processed.popleft()
+        if x == rows - 1 and y == cols - 1:
+            return v
+        if x < rows - 1 and grid[x + 1][y] != 1:
+            processed.append((x + 1, y, v + 1))
+        if y < cols - 1 and grid[x][y + 1] != 1:
+            processed.append((x, y + 1, v + 1))
+    return -1
+
+
+def t76_max_profit(prices: list):
+    low = -1
+    high = -1
+    up = False
+    legs = []
+    for p in prices:
+        if low < 0:
+            low = p
+            high = p
+            continue
+        if up:
+            if p >= high:
+                high = p
+                continue
+            else:
+                legs.append((low, high))
+                low = p
+                up = False
+                continue
+        else:
+            if p <= low:
+                low = p
+                continue
+            else:
+                legs.append((high, low))
+                high = p
+                up = True
+                continue
+    legs.append((low, high)) if up else legs.append((high, low))
+    return legs
