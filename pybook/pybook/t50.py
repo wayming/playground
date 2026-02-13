@@ -1,7 +1,13 @@
+import asyncio
 import collections
+import concurrent.futures
+import http.client
 import queue
 import threading
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 
 
 def t71_top_k(nums: list, topn):
@@ -187,3 +193,102 @@ class T78:
 
         for t in self.consumers:
             t.join()
+
+
+class T79_Async_Crawler:
+    def __init__(self):
+        pass
+
+    def fetch_url(self, url):
+        try:
+            with urllib.request.urlopen(url, timeout=2) as response:
+                encoding = response.headers.get_content_charset()
+                print(encoding)
+                return response.read().decode(encoding)
+        except urllib.error.HTTPError as e:
+            print(
+                "Failed to read url "
+                + url
+                + ", Error: "
+                + str(e.reason)
+                + ", Code: "
+                + str(e.code)
+            )
+        except urllib.error.URLError as e:
+            print("Failed to read url " + url + ", Error: " + str(e.reason))
+        except Exception as e:
+            print("Failed to read url " + url + ", Error: " + str(e))
+        return None
+
+    async def run(self, urls: list[str]):
+        tasks = []
+        async with asyncio.TaskGroup() as tg:
+            for url in urls:
+                tasks.append(tg.create_task(asyncio.to_thread(self.fetch_url, url)))
+        return [t.result() for t in tasks]
+
+
+class T80_MP_Crawler:
+    def __init__(self):
+        self.in_queue = queue.Queue()
+        self.out_queue = queue.Queue()
+
+        pass
+
+    def fetch_url(self, url):
+        try:
+            urlComponents = urllib.parse.urlparse(url)
+            conn = http.client.HTTPConnection(host=urlComponents.netloc, timeout=2)
+            path = urlComponents.path if urlComponents.path else "/"
+            conn.request("GET", path)
+            resp = conn.getresponse()
+            if resp.status != 200:
+                return "{resp.status}: {resp.reason}"
+            return resp.read().decode("UTF-8")
+        except http.client.HTTPException as e:
+            print("Failed to read url " + url + "Error: " + str(e))
+        finally:
+            if conn:
+                conn.close()
+
+        return None
+
+    def fetch_url_func(self):
+        while not self.in_queue.empty():
+            try:
+                url = self.in_queue.get_nowait()
+                self.in_queue.task_done()
+                self.out_queue.put(self.fetch_url(url))
+            except queue.Empty as e:
+                print(str(e))
+            except Exception as e:
+                print(str(e))
+
+        return "Execution Completed"
+
+    def run(self, urls, nparallel):
+        for url in urls:
+            self.in_queue.put(url)
+
+        execFutures: list[concurrent.futures.Future] = []
+        with concurrent.futures.ThreadPoolExecutor(nparallel) as executor:
+            execFutures = [
+                executor.submit(self.fetch_url_func) for _ in range(nparallel)
+            ]
+
+        self.in_queue.join()
+
+        for f in concurrent.futures.as_completed(execFutures):
+            try:
+                print(f.result())
+            except Exception as e:
+                print("Task Failed:", e)
+
+        results = []
+        while not self.out_queue.empty():
+            result = self.out_queue.get()
+            self.out_queue.task_done()
+            print(result)
+            results.append(len(result) if result else 0)
+
+        return results
