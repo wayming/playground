@@ -1,6 +1,6 @@
 import asyncio
 
-import pybook.t50 as t
+import pybook.t70 as t
 
 
 def test_t71_top_k():
