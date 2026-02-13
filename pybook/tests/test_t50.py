@@ -79,5 +79,7 @@ def test_t80_mp_crawler():
         "https://invalid-domain-12345.com",  # URL 错误
         "https://httpbin.org/uuid",
     ]
+    crawler = t.T80_MT_Crawler()
+    print(crawler.run(urls, 5))
     crawler = t.T80_MP_Crawler()
     print(crawler.run(urls, 5))
