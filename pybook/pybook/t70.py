@@ -3,7 +3,6 @@ import collections
 import concurrent.futures
 import http.client
 import multiprocessing
-import multiprocessing.queues
 import queue
 import threading
 import time
@@ -297,14 +296,20 @@ class T80_MT_Crawler:
 
 
 class T80_MP_Crawler:
-    def __init__(self):
-        self.in_queue = multiprocessing.Queue()
-        self.out_queue = multiprocessing.Queue()
+    in_queue: multiprocessing.Queue = None
+    out_queue: multiprocessing.Queue = None
 
+    def __init__(self):
         pass
 
     @staticmethod
+    def init_queue(inq: multiprocessing.Queue, outq: multiprocessing.Queue):
+        T80_MP_Crawler.in_queue = inq
+        T80_MP_Crawler.out_queue = outq
+
+    @staticmethod
     def fetch_url(url):
+        conn = None
         try:
             urlComponents = urllib.parse.urlparse(url)
             conn = http.client.HTTPConnection(host=urlComponents.netloc, timeout=2)
@@ -323,44 +328,47 @@ class T80_MP_Crawler:
         return None
 
     @staticmethod
-    def fetch_url_func(in_queue, out_queue):
-        while not in_queue.empty():
+    def fetch_url_func():
+        while True:
             try:
-                url = in_queue.get_nowait()
-                out_queue.put(T80_MP_Crawler.fetch_url(url))
+                url = T80_MP_Crawler.in_queue.get_nowait()
+                T80_MP_Crawler.out_queue.put(T80_MP_Crawler.fetch_url(url))
             except queue.Empty as e:
-                print(str(e))
+                print("Woker complete ", e)
+                break
             except Exception as e:
                 print(str(e))
 
         return "Execution Completed"
 
     def run(self, urls, nparallel):
+        T80_MP_Crawler.init_queue(multiprocessing.Queue(), multiprocessing.Queue())
+
         for url in urls:
-            self.in_queue.put(url)
+            T80_MP_Crawler.in_queue.put(url)
 
         execFutures: list[concurrent.futures.Future] = []
-        with concurrent.futures.ThreadPoolExecutor(nparallel) as executor:
+        with concurrent.futures.ProcessPoolExecutor(
+            nparallel,
+            initializer=T80_MP_Crawler.init_queue,
+            initargs=(T80_MP_Crawler.in_queue, T80_MP_Crawler.out_queue),
+        ) as executor:
             execFutures = [
-                executor.submit(
-                    T80_MP_Crawler.fetch_url_func, self.in_queue, self.out_queue
-                )
-                for _ in range(nparallel)
+                executor.submit(T80_MP_Crawler.fetch_url_func) for _ in range(nparallel)
             ]
 
-        # No join. Rely on as_completed to indicate that the child process
-        # has completed the work
-        # self.in_queue.join()
+            for f in concurrent.futures.as_completed(execFutures):
+                try:
+                    print(f.result())
+                except Exception as e:
+                    print("Task Failed:", e)
 
-        for f in concurrent.futures.as_completed(execFutures):
-            try:
-                print(f.result())
-            except Exception as e:
-                print("Task Failed:", e)
+        # No join. ProcessPool executor exits after all consumers are done.
+        # T80_MP_Crawler.in_queue.join()
 
         results = []
-        while not self.out_queue.empty():
-            result = self.out_queue.get()
+        while not T80_MP_Crawler.out_queue.empty():
+            result = T80_MP_Crawler.out_queue.get()
             print(result)
             results.append(len(result) if result else 0)
 
