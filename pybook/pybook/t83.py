@@ -4,22 +4,19 @@ import random
 import traceback
 
 
-async def producer(
-    q: asyncio.Queue, begin: asyncio.Condition, stop: asyncio.Event, rates: int
-):
-    async with begin:
-        await begin.wait()
+async def producer(q: asyncio.Queue, run: asyncio.Event, rates: int):
+    await run.wait()
 
     totalMessages = 0
-    begin = datetime.datetime.now()
-    print("producer begin at", begin)
-    while not stop.is_set():
+    beginAt = datetime.datetime.now()
+    print("producer begin at", beginAt)
+    while run.is_set():
         try:
             q.put_nowait(random.randint(1, 100))
             totalMessages += 1
             advanced = (
-                begin
-                + datetime.timedelta(seconds=int(totalMessages / rates))
+                beginAt
+                + datetime.timedelta(seconds=totalMessages / rates)
                 - datetime.datetime.now()
             )
             if advanced.total_seconds() > 0:
@@ -33,21 +30,20 @@ async def producer(
 async def consumer(
     input: asyncio.Queue,
     output: asyncio.Queue,
-    begin: asyncio.Condition,
-    stop: asyncio.Event,
+    run: asyncio.Event,
 ):
-    async with begin:
-        await begin.wait()
-    sum = 0
+    await run.wait()
+
+    total_sum = 0
     count = 0
     while True:
-        if stop.is_set() and input.empty():
+        if not run.is_set() and input.empty():
             break
 
         try:
             v = await asyncio.wait_for(input.get(), timeout=0.1)
             input.task_done()
-            sum += v
+            total_sum += v
             count += 1
         except TimeoutError:
             # traceback.print_exception(e)
@@ -55,7 +51,7 @@ async def consumer(
         except Exception as e:
             traceback.print_exception(e)
             raise e
-    await output.put((count, sum))
+    await output.put((count, total_sum))
     return f"consumer complete with total message {count}"
 
 
@@ -66,28 +62,25 @@ async def runner(
     consumers = []
     in_queue = asyncio.Queue()
     out_queue = asyncio.Queue()
-    begin = asyncio.Condition()
-    stop = asyncio.Event()
+    run = asyncio.Event()
     async with asyncio.TaskGroup() as tg:
         producers = [
-            tg.create_task(producer(in_queue, begin, stop, producer_rates))
+            tg.create_task(producer(in_queue, run, producer_rates))
             for _ in range(nproducers)
         ]
         consumers = [
-            tg.create_task(consumer(in_queue, out_queue, begin, stop))
+            tg.create_task(consumer(in_queue, out_queue, run))
             for _ in range(nconsumers)
         ]
-        await asyncio.sleep(0.1)
+
+        run.set()
 
         print("Fire at", datetime.datetime.now())
-        # Signal lost?
-        async with begin:
-            begin.notify_all()
 
         await asyncio.sleep(producer_elapsed)
 
         # Complete producing
-        stop.set()
+        run.clear()
 
     # await in_queue.join()
 
@@ -95,7 +88,8 @@ async def runner(
     for p in producers:
         if p.exception():
             print(p.exception())
-        total_produced += p.result()
+        else:
+            total_produced += p.result()
 
     for c in consumers:
         if c.exception():
