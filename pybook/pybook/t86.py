@@ -3,34 +3,42 @@ import collections
 
 def t86_graph_dfs(matrix: list[list]):
 
-    visited = set()
+    visited_edge = set()
 
-    def dfs(matrix, x, y):
-        results = []
-        for idx, v in enumerate(matrix[x][y + 1 :], start=y + 1):
-            if v > 0:
-                if (x, idx) not in visited:
-                    results.append((x, idx))
-                    visited.add((x, idx))
-                results.extend(dfs(matrix, idx, idx))
-        return results
+    def dfs(matrix, f):
+        edges = []
+        for t, connected in enumerate(matrix[f]):
+            if (
+                connected > 0
+                and (f, t) not in visited_edge
+                and (t, f) not in visited_edge
+            ):
+                edges.append((f, t))
+                visited_edge.add((f, t))
+                edges.extend(dfs(matrix, t))
+        return edges
 
-    return dfs(matrix, 0, 0)
+    return dfs(matrix, 0)
 
 
 def t86_graph_bfs(matrix: list[list]):
-    def bfs(matrix, x, y):
+    def bfs(matrix, x):
         to_visit = collections.deque()
-        results = []
-        to_visit.append((x, y))
-        visited = set()
+        edges = []
+        visited_edge = set()
+        to_visit.append(x)
         while len(to_visit) > 0:
-            idxx, idxy = to_visit.popleft()
-            for idx, v in enumerate(matrix[idxx][idxy + 1 :], start=idxy + 1):
-                if v > 0 and (idxx, idx) not in visited:
-                    results.append((idxx, idx))
-                    visited.add((idxx, idx))
-                    to_visit.append((idx, idx))
-        return results
+            f = to_visit.popleft()
 
-    return bfs(matrix, 0, 0)
+            for t, connected in enumerate(matrix[f]):
+                if (
+                    connected
+                    and (f, t) not in visited_edge
+                    and (t, f) not in visited_edge
+                ):
+                    edges.append((f, t))
+                    visited_edge.add((f, t))
+                    to_visit.append(t)
+        return edges
+
+    return bfs(matrix, 0)
