@@ -8,11 +8,7 @@ def t86_graph_dfs(matrix: list[list]):
     def dfs(matrix, f):
         edges = []
         for t, connected in enumerate(matrix[f]):
-            if (
-                connected > 0
-                and (f, t) not in visited_edge
-                and (t, f) not in visited_edge
-            ):
+            if connected > 0 and f < t and (f, t) not in visited_edge:
                 edges.append((f, t))
                 visited_edge.add((f, t))
                 edges.extend(dfs(matrix, t))
@@ -31,11 +27,7 @@ def t86_graph_bfs(matrix: list[list]):
             f = to_visit.popleft()
 
             for t, connected in enumerate(matrix[f]):
-                if (
-                    connected
-                    and (f, t) not in visited_edge
-                    and (t, f) not in visited_edge
-                ):
+                if connected and f < t and (f, t) not in visited_edge:
                     edges.append((f, t))
                     visited_edge.add((f, t))
                     to_visit.append(t)
