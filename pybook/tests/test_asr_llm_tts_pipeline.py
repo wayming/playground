@@ -19,13 +19,9 @@ def test_token_bucket():
     asyncio.run(atest_token_bucket())
 
 
-async def atest_LLMCache_gen_key():
-    cache = alt.LLMCache(100, 10)
-    assert len(await cache.gen_key("test_LLMCache_gen_key")) == 32
-
-
-def test_LLMCache_gen_key():
-    asyncio.run(atest_LLMCache_gen_key())
+def test_KeyGenerator():
+    gen = alt.KeyGenerator()
+    assert len(gen("test_LLMCache_gen_key")) == 32
 
 
 async def atest_LLMCache_cache_operations():
@@ -36,7 +32,7 @@ async def atest_LLMCache_cache_operations():
         g.create_task(cache.put("key3", "value3"))
     stats = await cache.get_stats()
     assert stats.hits == 0
-    assert stats.misses == 3
+    assert stats.misses == 0
     assert stats.size == 3
 
     tasks: list[asyncio.Task] = []
@@ -48,7 +44,7 @@ async def atest_LLMCache_cache_operations():
 
     stats = await cache.get_stats()
     assert stats.hits == 3
-    assert stats.misses == 3
+    assert stats.misses == 0
     assert stats.size == 3
 
     await asyncio.sleep(5)
@@ -59,9 +55,29 @@ async def atest_LLMCache_cache_operations():
         g.create_task(cache.get("key3"))
     stats = await cache.get_stats()
     assert stats.hits == 3
-    assert stats.misses == 6
+    assert stats.misses == 3
     assert stats.size == 0
 
 
 def test_LLMCache_cache_operations():
     asyncio.run(atest_LLMCache_cache_operations())
+
+
+async def atest_in_flight_deduper():
+    duper = alt.InFlightDeduper()
+    tasks: list[asyncio.Task] = []
+
+    async def worker(x, y):
+        return x + y
+
+    async with asyncio.TaskGroup() as tg:
+        tasks.append(tg.create_task(duper(worker, "param1", "param2")))
+        tasks.append(tg.create_task(duper(worker, "param1", "INVALID")))
+
+    for t in tasks:
+        print(t.result())
+        assert t.result() == "param1param2"
+
+
+def test_in_flight_depuer():
+    asyncio.run(atest_in_flight_deduper())

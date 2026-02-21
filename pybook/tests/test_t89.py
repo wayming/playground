@@ -1,4 +1,4 @@
-import pybook.pybook.t89 as t
+import pybook.t89 as t
 
 
 def test_t89_solve_grid_path():

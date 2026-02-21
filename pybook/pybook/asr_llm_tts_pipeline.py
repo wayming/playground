@@ -4,6 +4,7 @@ import collections
 import dataclasses
 import datetime
 import hashlib
+import traceback
 
 
 @dataclasses.dataclass
@@ -53,6 +54,16 @@ class LLMCacheStats:
     misses: int
 
 
+class KeyGenerator:
+    def __init__(self):
+        pass
+
+    def __call__(self, input: str):
+        cleaned_input = str([x for x in input if x.isalnum()])
+        hashed_key = hashlib.sha256(cleaned_input.encode("utf-8")).digest()[:24]
+        return base64.b64encode(hashed_key).decode("utf-8")
+
+
 class LLMCache:
     def __init__(self, capacity, ttl):
         self.cap = capacity
@@ -60,11 +71,10 @@ class LLMCache:
         self.stats = LLMCacheStats(0, 0, 0)
         self.cache = collections.OrderedDict()
         self.lock = asyncio.Lock()
+        self.key_gen = KeyGenerator()
 
-    async def gen_key(self, input: str):
-        cleaned_input = str([x for x in input if x.isalnum()])
-        hashed_key = hashlib.sha256(cleaned_input.encode("utf-8")).digest()[:24]
-        return base64.b64encode(hashed_key).decode("utf-8")
+    def gen_key(self, input: str):
+        return self.key_gen(input)
 
     async def house_keeping(self):
         now = datetime.datetime.now()
@@ -80,7 +90,7 @@ class LLMCache:
             self.stats.size = len(self.cache)
 
     async def get(self, input):
-        key = await self.gen_key(input)
+        key = self.gen_key(input)
         now = datetime.datetime.now()
         await self.house_keeping()
         async with self.lock:
@@ -94,16 +104,42 @@ class LLMCache:
                 return None
 
     async def put(self, input, output):
-        key = await self.gen_key(input)
+        key = self.gen_key(input)
         async with self.lock:
             if key in self.cache:
                 self.cache.move_to_end(key)
-                self.stats.hits += 1
             else:
                 self.cache.setdefault(key, ())
-                self.stats.misses += 1
             self.cache[key] = (datetime.datetime.now() + self.ttl_delta, output)
         await self.house_keeping()
 
     async def get_stats(self):
         return self.stats
+
+
+class InFlightDeduper:
+    def __init__(self):
+        self.call_map: dict[str, asyncio.Task] = {}
+        self.key_gen = KeyGenerator()
+        self.lock = asyncio.Lock()
+        pass
+
+    async def __call__(self, fn, *args):
+        key = self.key_gen(args[0])
+        task: asyncio.Task
+        async with self.lock:
+            if key not in self.call_map:
+                task = asyncio.create_task(fn(*args))
+                # task.add_done_callback(lambda fut, k=key: self.call_map.pop(k, None))
+                self.call_map[key] = task
+            else:
+                task = self.call_map[key]
+        try:
+            return await task
+        except Exception:
+            traceback.print_exc()
+            raise
+        finally:
+            async with self.lock:
+                if self.call_map.get(key) is task:
+                    self.call_map.pop(key, None)
