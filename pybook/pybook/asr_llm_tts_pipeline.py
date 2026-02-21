@@ -1,6 +1,8 @@
 import asyncio
+import base64
 import dataclasses
 import datetime
+import hashlib
 
 
 @dataclasses.dataclass
@@ -41,3 +43,34 @@ class TokenBucket:
     async def get_stats(self):
         async with self.lock:
             return self.stats
+
+
+@dataclasses.dataclass
+class LLMCacheStats:
+    size: int
+    hits: int
+    misses: int
+
+
+class LLMCache:
+    def __init__(self, capacity, ttl):
+        self.cap = capacity
+        self.ttl = ttl
+        self.stats = LLMCacheStats(0, 0, 0)
+
+    async def gen_key(self, input: str):
+        cleaned_input = str([x for x in input if x.isalnum()])
+        hashed_key = hashlib.sha256(cleaned_input.encode("utf-8")).digest()[:24]
+        return base64.b64encode(hashed_key).decode("utf-8")
+
+    async def house_keeping(self):
+        pass
+
+    async def get(self, input):
+        pass
+
+    async def put(self, input):
+        pass
+
+    async def get_stats(self):
+        return self.stats

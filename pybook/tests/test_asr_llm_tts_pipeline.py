@@ -17,3 +17,12 @@ async def atest_token_bucket():
 
 def test_token_bucket():
     asyncio.run(atest_token_bucket())
+
+
+async def atest_LLMCache_gen_key():
+    cache = alt.LLMCache(100, 10)
+    assert len(await cache.gen_key("test_LLMCache_gen_key")) == 32
+
+
+def test_LLMCache_gen_key():
+    asyncio.run(atest_LLMCache_gen_key())
