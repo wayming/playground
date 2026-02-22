@@ -4,8 +4,9 @@ import collections
 import dataclasses
 import datetime
 import hashlib
+import random
 import traceback
-
+import time
 
 @dataclasses.dataclass
 class TokenBucketStats:
@@ -64,6 +65,34 @@ class KeyGenerator:
         return base64.b64encode(hashed_key).decode("utf-8")
 
 
+class InFlightDeduper:
+    def __init__(self):
+        self.call_map: dict[str, asyncio.Task] = {}
+        self.key_gen = KeyGenerator()
+        self.lock = asyncio.Lock()
+        pass
+
+    async def __call__(self, fn, *args):
+        key = self.key_gen(args[0])
+        task: asyncio.Task
+        async with self.lock:
+            if key not in self.call_map:
+                task = asyncio.create_task(fn(*args))
+                # task.add_done_callback(lambda fut, k=key: self.call_map.pop(k, None))
+                self.call_map[key] = task
+            else:
+                task = self.call_map[key]
+        try:
+            return await task
+        except Exception:
+            traceback.print_exc()
+            raise
+        finally:
+            async with self.lock:
+                if self.call_map.get(key) is task:
+                    self.call_map.pop(key, None)
+
+
 class LLMCache:
     def __init__(self, capacity, ttl):
         self.cap = capacity
@@ -100,7 +129,7 @@ class LLMCache:
                 self.stats.hits += 1
                 return self.cache[key][1]
             else:
-                self.stats.misses += 1
+                self.stats.misses += 1tetime.now()
                 return None
 
     async def put(self, input, output):
@@ -117,29 +146,43 @@ class LLMCache:
         return self.stats
 
 
-class InFlightDeduper:
-    def __init__(self):
-        self.call_map: dict[str, asyncio.Task] = {}
-        self.key_gen = KeyGenerator()
-        self.lock = asyncio.Lock()
-        pass
+class LLM:
+    def __init__(self, cache):
+        self.cache: LLMCache = cache
 
-    async def __call__(self, fn, *args):
-        key = self.key_gen(args[0])
-        task: asyncio.Task
-        async with self.lock:
-            if key not in self.call_map:
-                task = asyncio.create_task(fn(*args))
-                # task.add_done_callback(lambda fut, k=key: self.call_map.pop(k, None))
-                self.call_map[key] = task
-            else:
-                task = self.call_map[key]
-        try:
-            return await task
-        except Exception:
-            traceback.print_exc()
-            raise
-        finally:
-            async with self.lock:
-                if self.call_map.get(key) is task:
-                    self.call_map.pop(key, None)
+    async def call(self, input):
+
+        # Simulate maximum 1 second delay
+        await asyncio.sleep(random.randint(1, 100) / 100)
+
+        # 1% chances of timeout
+        if random.randint(1, 100) % 10 == 0:
+            raise TimeoutError
+
+        return hash(input)
+
+    async def call_retry(self, input, timeout):
+        delay = 1
+        begin = time.monotonic()
+        while True:
+            try:
+                output = await self.cache.get(input)
+                if output is not None:
+                    return output
+
+                output = await self.call(input)
+                await self.cache.put(input, output)
+                return output
+            except TimeoutError:
+                elasped = time.monotonic() - begin
+                if elasped > datetime.timedelta(seconds=timeout):
+                    traceback.print_exc()
+                    raise
+                remaining = timeout - elasped.total_seconds()
+                if remaining <= 0:
+                    raise
+                await asyncio.sleep(min(delay, remaining))
+                delay *= 2 * (0.9 + 0.1 * random.random())
+            except Exception:
+                traceback.print_exc()
+                raise

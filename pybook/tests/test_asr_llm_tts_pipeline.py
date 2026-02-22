@@ -81,3 +81,32 @@ async def atest_in_flight_deduper():
 
 def test_in_flight_depuer():
     asyncio.run(atest_in_flight_deduper())
+
+
+async def atest_llm_cache_hit():
+    cache = alt.LLMCache(100, 5)
+    await cache.put("input1", "output1")
+    await cache.put("input2", "output2")
+    llm = alt.LLM(cache)
+    assert await llm.call_retry("input1", 5) == "output1"
+    stats = await cache.get_stats()
+    assert stats.hits == 1
+
+
+async def atest_llm_miss():
+    cache = alt.LLMCache(100, 5)
+    await cache.put("input1", "output1")
+    await cache.put("input2", "output2")
+    llm = alt.LLM(cache)
+    assert await llm.call_retry("input3", 5) == hash("input3")
+    stats = await cache.get_stats()
+    assert stats.hits == 0
+
+
+# @pytest.mark.asyncio
+# async def atest_llm_retry():
+
+
+def test_llm_cache():
+    asyncio.run(atest_llm_cache_hit())
+    asyncio.run(atest_llm_miss())
