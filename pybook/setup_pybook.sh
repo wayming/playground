@@ -28,7 +28,7 @@ python -m pip install --upgrade pip setuptools wheel
 python -m pip --version
 
 echo "=== Step 4: 安装开发依赖 (pytest, ruff) ==="
-python -m pip install pytest ruff chardet
+python -m pip install pytest ruff chardet pytest-asyncio
 python -m pip list
 
 echo "=== Step 5: 安装项目为 editable ==="

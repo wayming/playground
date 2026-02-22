@@ -5,8 +5,9 @@ import dataclasses
 import datetime
 import hashlib
 import random
-import traceback
 import time
+import traceback
+
 
 @dataclasses.dataclass
 class TokenBucketStats:
@@ -129,7 +130,7 @@ class LLMCache:
                 self.stats.hits += 1
                 return self.cache[key][1]
             else:
-                self.stats.misses += 1tetime.now()
+                self.stats.misses += 1
                 return None
 
     async def put(self, input, output):
@@ -175,10 +176,10 @@ class LLM:
                 return output
             except TimeoutError:
                 elasped = time.monotonic() - begin
-                if elasped > datetime.timedelta(seconds=timeout):
+                if elasped > float(timeout):
                     traceback.print_exc()
                     raise
-                remaining = timeout - elasped.total_seconds()
+                remaining = float(timeout) - elasped
                 if remaining <= 0:
                     raise
                 await asyncio.sleep(min(delay, remaining))

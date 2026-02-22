@@ -1,4 +1,7 @@
 import asyncio
+import unittest.mock
+
+import pytest
 
 import pybook.asr_llm_tts_pipeline as alt
 
@@ -103,10 +106,46 @@ async def atest_llm_miss():
     assert stats.hits == 0
 
 
-# @pytest.mark.asyncio
-# async def atest_llm_retry():
-
-
 def test_llm_cache():
     asyncio.run(atest_llm_cache_hit())
     asyncio.run(atest_llm_miss())
+
+
+@pytest.mark.asyncio
+async def atest_llm_retry_succeed():
+    cache = alt.LLMCache(100, 5)
+    llm = alt.LLM(cache)
+    with unittest.mock.patch.object(
+        llm,
+        "call",
+        new=unittest.mock.AsyncMock(
+            side_effect=[TimeoutError(), TimeoutError(), hash("input1")]
+        ),
+    ):
+        assert await llm.call_retry("input1", 5) == hash("input1")
+
+    stats = await cache.get_stats()
+    assert stats.misses == 3
+
+
+@pytest.mark.asyncio
+async def atest_llm_retry_timeout():
+    cache = alt.LLMCache(100, 5)
+    llm = alt.LLM(cache)
+    with (
+        unittest.mock.patch.object(
+            llm,
+            "call",
+            new=unittest.mock.AsyncMock(side_effect=TimeoutError),
+        ),
+        pytest.raises(TimeoutError),
+    ):
+        assert await llm.call_retry("input1", 5)
+
+    stats = await cache.get_stats()
+    assert stats.misses == 4  # retry 3 times
+
+
+def test_llm_retry():
+    asyncio.run(atest_llm_retry_succeed())
+    asyncio.run(atest_llm_retry_timeout())
