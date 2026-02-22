@@ -187,3 +187,60 @@ class LLM:
             except Exception:
                 traceback.print_exc()
                 raise
+
+
+@dataclasses
+class ASR_LLM_Pipeline_Config:
+    input_queue_cap: int = 1000
+    token_bucket_cap: int = 50
+    token_bucket_rate: int = 5
+    llm_cache_cap: int = 100
+    llm_cache_ttl: int = 10
+    llm_retry_timeout: int = 5
+
+
+class ASR_LLM_Pipeline:
+    def __init__(self, config: ASR_LLM_Pipeline_Config):
+        self.input = asyncio.Queue(config.input_queue_cap)
+        self.output = asyncio.Queue()
+        self.error = asyncio.Queue()
+        self.input_lock = asyncio.Lock()
+        self.input_cond = asyncio.Condition(self.input_lock)
+        self.token_bucket = TokenBucket(
+            config.token_bucket_cap, config.token_bucket_rate
+        )
+        self.output_lock = asyncio.Lock()
+        self.error_lock = asyncio.Lock()
+        self.deduper = InFlightDeduper()
+        self.llm_cache = LLMCache(config.llm_cache_cap, config.llm_cache_ttl)
+        self.llm = LLM(self.llm_cache)
+        self.llm_retry_timeout = config.llm_retry_timeout
+
+    async def submit(self, input_message):
+        try:
+            with self.input_lock:
+                await self.input.put(input_message)
+        except asyncio.QueueFull:
+            traceback.print_exc()
+            return
+        except Exception:
+            traceback.print_exc()
+            raise
+
+    async def run(self):
+        while True:
+            input_bytes = None
+            output = None
+            id = None
+            with self.input_lock:
+                id, input_bytes = await self.input.get()
+            await self.token_bucket.wait_for_token(1)
+            try:
+                output = await self.deduper(
+                    self.llm.call_retry, input_bytes, self.llm_retry_timeout
+                )
+                with self.output_lock:
+                    await self.output.put((id, output))
+            except Exception:
+                with self.error_lock:
+                    self.error.put((id, input_bytes))
