@@ -140,7 +140,7 @@ async def atest_llm_retry_timeout():
         ),
         pytest.raises(TimeoutError),
     ):
-        assert await llm.call_retry("input1", 5)
+        await llm.call_retry("input1", 5)
 
     stats = await cache.get_stats()
     assert stats.misses == 4  # retry 3 times
