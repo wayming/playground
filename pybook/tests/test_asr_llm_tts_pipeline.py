@@ -6,7 +6,8 @@ import pytest
 import pybook.asr_llm_tts_pipeline as alt
 
 
-async def atest_token_bucket():
+@pytest.mark.asyncio
+async def test_token_bucket():
     bucket = alt.TokenBucket(10, 1)
     await bucket.wait_for_token(5)
     stats = await bucket.get_stats()
@@ -18,16 +19,13 @@ async def atest_token_bucket():
     assert stats.remaining == 0
 
 
-def test_token_bucket():
-    asyncio.run(atest_token_bucket())
-
-
 def test_KeyGenerator():
     gen = alt.KeyGenerator()
     assert len(gen("test_LLMCache_gen_key")) == 32
 
 
-async def atest_LLMCache_cache_operations():
+@pytest.mark.asyncio
+async def test_LLMCache_cache_operations():
     cache = alt.LLMCache(100, 3)
     async with asyncio.TaskGroup() as g:
         g.create_task(cache.put("key1", "value1"))
@@ -62,11 +60,8 @@ async def atest_LLMCache_cache_operations():
     assert stats.size == 0
 
 
-def test_LLMCache_cache_operations():
-    asyncio.run(atest_LLMCache_cache_operations())
-
-
-async def atest_in_flight_deduper():
+@pytest.mark.asyncio
+async def test_in_flight_deduper():
     duper = alt.InFlightDeduper()
     tasks: list[asyncio.Task] = []
 
@@ -82,11 +77,8 @@ async def atest_in_flight_deduper():
         assert t.result() == "param1param2"
 
 
-def test_in_flight_depuer():
-    asyncio.run(atest_in_flight_deduper())
-
-
-async def atest_llm_cache_hit():
+@pytest.mark.asyncio
+async def test_llm_cache_hit():
     cache = alt.LLMCache(100, 5)
     await cache.put("input1", "output1")
     await cache.put("input2", "output2")
@@ -96,7 +88,8 @@ async def atest_llm_cache_hit():
     assert stats.hits == 1
 
 
-async def atest_llm_miss():
+@pytest.mark.asyncio
+async def test_llm_miss():
     cache = alt.LLMCache(100, 5)
     await cache.put("input1", "output1")
     await cache.put("input2", "output2")
@@ -106,13 +99,8 @@ async def atest_llm_miss():
     assert stats.hits == 0
 
 
-def test_llm_cache():
-    asyncio.run(atest_llm_cache_hit())
-    asyncio.run(atest_llm_miss())
-
-
 @pytest.mark.asyncio
-async def atest_llm_retry_succeed():
+async def test_llm_retry_succeed():
     cache = alt.LLMCache(100, 5)
     llm = alt.LLM(cache)
     with unittest.mock.patch.object(
@@ -129,7 +117,7 @@ async def atest_llm_retry_succeed():
 
 
 @pytest.mark.asyncio
-async def atest_llm_retry_timeout():
+async def test_llm_retry_timeout():
     cache = alt.LLMCache(100, 5)
     llm = alt.LLM(cache)
     with (
@@ -146,6 +134,44 @@ async def atest_llm_retry_timeout():
     assert stats.misses == 4  # retry 3 times
 
 
-def test_llm_retry():
-    asyncio.run(atest_llm_retry_succeed())
-    asyncio.run(atest_llm_retry_timeout())
+@pytest.mark.asyncio
+async def test_asr_llm_pipeline_run():
+    mock_llm = unittest.mock.AsyncMock()
+    mock_llm.call_retry.return_value = "test output"
+    asr = alt.ASR_Worker()
+    pipeline = alt.ASR_LLM_Pipeline(
+        alt.ASR_LLM_Pipeline_Config(), llm=mock_llm, asr=asr
+    )
+
+    await pipeline.submit((1, b"test input"))
+    stats = pipeline.get_stats()
+    assert stats.submits == 1
+
+    run_task = asyncio.create_task(pipeline.run())
+    pipeline.shutdown()
+    await run_task
+
+    assert await pipeline.output() == (1, "test output")
+    await pipeline.join()
+
+
+@pytest.mark.asyncio
+async def test_asr_llm_pipeline_run_timeout():
+    mock_llm = unittest.mock.AsyncMock()
+    mock_llm.call_retry.side_effect = TimeoutError("llm timeout")
+    asr = alt.ASR_Worker()
+    pipeline = alt.ASR_LLM_Pipeline(
+        alt.ASR_LLM_Pipeline_Config(), llm=mock_llm, asr=asr
+    )
+
+    await pipeline.submit((1, b"test input"))
+    stats = pipeline.get_stats()
+    assert stats.submits == 1
+
+    run_task = asyncio.create_task(pipeline.run())
+    pipeline.shutdown()
+    await run_task
+
+    assert await pipeline.output() is None
+    await pipeline.error_router()
+    await pipeline.join()
