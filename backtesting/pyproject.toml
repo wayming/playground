@@ -1,0 +1,8 @@
+[project]
+name = "backtesting"
+version = "0.1.0"
+dependencies = ["pandas", "numpy"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
