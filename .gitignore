@@ -11,3 +11,4 @@ backtesting/backtesting/diidend_rebalance.py
 backtesting/.venv
 backtesting/backtesting.egg-info
 backtesting/output*
+backtesting/dividend_rebalance.cp*
