@@ -7,7 +7,8 @@ dependencies = [
     "yfinance",
     "requests>=2.32,<3",          # 允许 2.32.x
     "urllib3>=1.26.20,<3",        # 允许 2.x
-    "charset_normalizer<4"
+    "charset_normalizer<4",
+    "matplotlib"
 ]
 
 [build-system]
