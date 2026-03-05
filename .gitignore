@@ -12,3 +12,4 @@ backtesting/.venv
 backtesting/backtesting.egg-info
 backtesting/output*
 backtesting/dividend_rebalance.cp*
+backtesting/tmp2/*

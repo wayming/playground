@@ -395,15 +395,17 @@ if __name__ == "__main__":
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
     logging.basicConfig(filename=log_file, level=logging.DEBUG if args.debug else logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    
-    today = datetime.datetime.today()
-    first_day_of_current_year = datetime.datetime(today.year, 1, 1)
-    last_year = today.year - 1
+
     # 从start年到end年，每月一个起点，每个测试period
     start = datetime.datetime(args.start, 1, 1)
     end = datetime.datetime(args.end, 1, 1)
     period = args.period
     
+    today = datetime.datetime.today()
+    first_day_of_current_year = datetime.datetime(today.year, 1, 1)
+    last_year_of_today = today.year - 1
+    end_year = end.year
+
     logging.info(f"Configuration: debug={args.debug}, start={args.start}, end={args.end}, period={period}, rebalance={args.rebalance}, output={args.output}, symbols='{args.symbols}', initial_fund={args.initial_fund}")
     
     rolling_results = []
@@ -459,13 +461,20 @@ if __name__ == "__main__":
             # 累计分红
             total_dividend = history["dividend_received"].sum()
             
-            # 预测分红：期末 shares × 2024年分红（最新的完整年份分红数据）
+            # 预测分红：期末 shares × last year 年分红（最新的完整年份分红数据）
             predicted_div = 0
-            if last_year in yearly_div:
+            if last_year_of_today in yearly_div:
                 for sym, h in portfolio.stock_holding.items():
-                    if sym in yearly_div[last_year]:
-                        predicted_div += h.shares * yearly_div[last_year][sym]
-            
+                    if sym in yearly_div[last_year_of_today]:
+                        predicted_div += h.shares * yearly_div[last_year_of_today][sym]
+
+            # Dividend yield of the end year
+            last_year_dividend = 0
+            if end_year in yearly_div:
+                for sym, h in portfolio.stock_holding.items():
+                    if sym in yearly_div[end_year]:
+                        last_year_dividend += h.shares * yearly_div[end_year][sym]
+
             rolling_results.append({
                 "start_date": d,
                 "initial_equity": initial_equity,
@@ -475,6 +484,7 @@ if __name__ == "__main__":
                 "max_drawdown": max_drawdown,
                 "total_dividend": total_dividend,
                 "predicted_dividend": predicted_div,
+                "last_year_dividend": last_year_dividend,
                 "total_invest": total_invest,
                 "years": years
             })
