@@ -107,6 +107,7 @@ class Portfolio:
         self.balance_strategies : list[TradingStrategy] = []
         self.pending_operations : list[tuple[str, str, float]] = []
         self.cash_split_strategy : TradingStrategy = CashSplitEvenlyStrategy()
+
     def add_balance_strategy(self, strategy:TradingStrategy):
         self.balance_strategies.append(strategy)    
     
@@ -129,7 +130,8 @@ class Portfolio:
         if holding.shares == 0:
             # New buy
             holding.floor_shares = self.config.floor_shares_rate * shares
-
+            holding.initial_price = unit_price
+            holding.initial_shares = shares
         holding.shares += shares
         holding.avg_down_price = holding.holding_price * self.config.avg_down_trigger_ratio # Price down
         holding.take_profit_price = holding.holding_price * self.config.take_profit_ratio # Price double
@@ -167,7 +169,7 @@ class Portfolio:
         }
         pass
 
-    def dividend(self, date:datetime.date, symbol:str, dividen_per_share: float, closing_prices: dict = None):
+    def dividend(self, date:datetime.date, symbol:str, dividen_per_share: float, market_data: dict = None):
         if symbol not in self.stock_holding:
             raise KeyError(f"No holdings for {symbol}")
 
@@ -182,63 +184,63 @@ class Portfolio:
         logging.info(f"Receive dividend for {symbol}, {dividen_per_share} per share, return cash {dividend_cash}")
         
         # 立即将分红现金用于再投资（如果有价格信息）
-        if dividend_cash > 0 and closing_prices:
-            for op, symbol, shares in self.cash_split_strategy.execute(date, dividend_cash, self.stock_holding, closing_prices):
+        if dividend_cash > 0 and market_data:
+            for op, symbol, shares in self.cash_split_strategy.execute(date, dividend_cash, self.stock_holding, market_data):
                 if op == OPERATION_BUY:
-                    self.buy(date, symbol, shares, closing_prices[symbol])
+                    self.buy(date, symbol, shares, market_data[symbol]["Close"])
                 elif op == OPERATION_SELL:
                     raise ValueError("Cash split strategy should not sell")
         
         # 更新所有股票的市场价格
         if closing_prices:
-            self.populate_market_prices(closing_prices)
+            self.populate_position(closing_prices)
 
     
-    def rebalance(self, date:datetime.date, closing_prices: dict):
+    def rebalance(self, date:datetime.date, market_data: dict):
         cash_required = 0
 
         for strategy in self.balance_strategies:
-            self.pending_operations.extend(strategy.execute(date, self.cash, self.stock_holding, closing_prices))
+            self.pending_operations.extend(strategy.execute(date, self.cash, self.stock_holding, market_data))
         if self.pending_operations:
             logging.info(f"pending operations: {self.pending_operations}")
 
         buys = [op for op in self.pending_operations if op[0] == OPERATION_BUY]
         sells = [op for op in self.pending_operations if op[0] == OPERATION_SELL]
         for _, symbol, shares in sells:
-            self.sell(date, symbol, shares, closing_prices[symbol])
+            self.sell(date, symbol, shares, market_data[symbol]["Close"])
         
         for _, symbol, shares in buys:
             if symbol not in self.stock_holding:
                 holding = Holding(symbol = symbol)
                 self.stock_holding[symbol] = holding
-            if self.cash < shares * closing_prices[symbol]:
-                cash_required += shares * closing_prices[symbol]
+            if self.cash < shares * market_data[symbol]["Close"]:
+                cash_required += shares * market_data[symbol]["Close"]
                 continue
-            self.buy(date, symbol, shares, closing_prices[symbol])
+            self.buy(date, symbol, shares, market_data[symbol]["Close"])
         
         if self.cash > 0 and self.cash_split_strategy:
-            for op, symbol, shares in self.cash_split_strategy.execute(date, self.cash, self.stock_holding, closing_prices):
+            for op, symbol, shares in self.cash_split_strategy.execute(date, self.cash, self.stock_holding, market_data):
                 if op == OPERATION_BUY:
-                    self.buy(date, symbol, shares, closing_prices[symbol])
+                    self.buy(date, symbol, shares, market_data[symbol]["Close"])
                 elif op == OPERATION_SELL:
                     raise ValueError("Cash split strategy should not sell")
             self.cash = 0 # Discards remaining cash
 
-        self.populate_market_prices(closing_prices)
+        self.populate_position(market_data)
         self.pending_operations = []
 
         return cash_required
     
-    def populate_market_prices(self, closing_prices: dict):
-        for sym, unit_price in closing_prices.items():
-            self.stock_holding[sym].market_price = unit_price
-            self.stock_holding[sym].position_value = self.stock_holding[sym].shares * unit_price
+    def populate_position(self, market_data: dict):
+        for sym, data in market_data.items():
+            self.stock_holding[sym].market_price = data["Close"]
+            self.stock_holding[sym].position_value = self.stock_holding[sym].shares * data["Close"]
             
-    def stats(self, closing_prices:dict, predict_dividents:list):
+    def stats(self, market_data:dict, predict_dividents:list):
         result_stats = {"holding": {}}
         total_stock_value = 0
         for symbol, holding in self.stock_holding.items():
-            value = holding.shares * closing_prices[symbol]
+            value = holding.shares * market_data[symbol]["Close"]
             logging.info(f"{symbol}: {holding.shares}, value {value}")
             total_stock_value += value
             result_stats["holding"][symbol] ={
@@ -269,11 +271,20 @@ class Portfolio:
         logging.info(f"Estimate total dividents of the period {int(total_dividends)}")
         return total_dividends
     
-def back_testing_yh_finance(star_date:str, symbols:str, initial_fund: int, years: str, config: Portfolio_Conifg = None, enable_rebalance: bool = True):
+def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fund: int, years: str, config: Portfolio_Conifg = None, enable_rebalance: bool = True):
     stock_data = yfinance.Tickers(symbols)
-    hist = stock_data.history(start=star_date, period=years, interval='1d', auto_adjust=False)
-    logging.info(hist[["Close", "Adj Close", "Dividends"]])
+    warm_up_date = datetime.datetime(star_date.year -1, star_date.month, star_date.day)
+    hist = stock_data.history(start=warm_up_date, period=years, interval='1d', auto_adjust=False)
+    ma250_all_tickers = hist["Close"].rolling(window=250).mean()
+    rolling_div_sum_all_tickers = hist['Dividends'].rolling(window=250).sum()
+    yield_all_tickers = rolling_div_sum_all_tickers / hist['Close']
 
+    ma250_all_tickers.columns = pd.MultiIndex.from_product([["MA250"], ma250_all_tickers.columns])
+    rolling_div_sum_all_tickers.columns = pd.MultiIndex.from_product([["Rolling_Div_Sum"], rolling_div_sum_all_tickers.columns])
+    yield_all_tickers.columns = pd.MultiIndex.from_product([["Yield"], yield_all_tickers.columns])
+    hist = pd.concat([hist, ma250_all_tickers, rolling_div_sum_all_tickers, yield_all_tickers], axis=1)
+    logging.info(hist[["Close", "Dividends", "MA250", "Yield"]])
+    
     today = datetime.datetime.today()
     last_year_first_day = datetime.datetime(today.year - 1, 1, 1)
     last_year_first_day.strftime("%Y-%m-%d")
@@ -289,9 +300,9 @@ def back_testing_yh_finance(star_date:str, symbols:str, initial_fund: int, years
 
     # 历史记录 DataFrame
     history = []
-    prev_equity = None
+    prev_equity_total = None
 
-    for date, row in hist[["Close", "Dividends"]].iterrows():
+    for date, row in hist[["Close", "Dividends", "MA250", "Yield"]].loc[star_date:].iterrows():
 
         close_price_map = row["Close"].dropna().to_dict()
         dividend_map = row["Dividends"].fillna(0).to_dict()
@@ -309,7 +320,7 @@ def back_testing_yh_finance(star_date:str, symbols:str, initial_fund: int, years
                 "dividend_received": 0,
                 "exposure": position_value / equity_total if equity_total > 0 else 0
             })
-            prev_equity = equity_total
+            prev_equity_total = equity_total
             continue
             
         # 分红
@@ -333,8 +344,8 @@ def back_testing_yh_finance(star_date:str, symbols:str, initial_fund: int, years
         position_value = sum(h.position_value for sym, h in portfolio.stock_holding.items())
         equity_total = position_value + portfolio.cash
         drawdown = 0
-        if prev_equity and equity_total < prev_equity:
-            drawdown = (prev_equity - equity_total) / prev_equity
+        if prev_equity_total and equity_total < prev_equity_total:
+            drawdown = (prev_equity_total - equity_total) / prev_equity_total
         history.append({
             "date": date,
             "position_value": position_value,
@@ -344,7 +355,7 @@ def back_testing_yh_finance(star_date:str, symbols:str, initial_fund: int, years
             "exposure": position_value / equity_total if equity_total > 0 else 0,
             "drawdown": drawdown
         })
-        prev_equity = max(prev_equity, equity_total)  # 历史高点用于计算回撤
+        prev_equity_total = max(prev_equity_total, equity_total)  # 历史高点用于计算回撤
 
     portfolio.show()
     portfolio.stats(hist["Close"].ffill().iloc[-1].to_dict(), last_year_hist["Dividends"].fillna(0).to_dict(orient="records"))
@@ -446,7 +457,7 @@ if __name__ == "__main__":
         else:
             logging.info("Rebalancing enabled: take profit and average down")
         
-        history, portfolio = back_testing_yh_finance(d.strftime("%Y-%m-%d"), all_symbols, args.initial_fund, period, config, args.rebalance)
+        history, portfolio = back_testing_yh_finance(d, all_symbols, args.initial_fund, period, config, args.rebalance)
         
         # 为每个起点生成单独的 backtest_report（不覆盖）
         output = os.path.join(output_dir, f"backtest_{d.strftime('%Y%m%d')}.png")

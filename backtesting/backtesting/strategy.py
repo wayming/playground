@@ -19,7 +19,8 @@ class Holding:
     total_dividend_value: float = 0.0
     total_purchase_cost: float = 0.0
     last_avg_down_price: float = 0.0
-    
+    initial_shares: float = 0.0
+    initial_price: float = 0.0
     
     # Immutable after the initial buy
     floor_shares: float = 0.0
@@ -91,26 +92,42 @@ class AverageDownStrategy(TradingStrategy):
         
         return operations
 
-class AverageDownByClosePriceStrategy(TradingStrategy):
-    def __init__(self, average_down_rate: float = 0.5, average_down_buy_ratio: float = 1.0) -> None:
+# Average down by MA250
+# Each bind only trigger once, and restart from band1 when MA250 exceeds initial price
+class AverageDownByMA250Strategy(TradingStrategy):
+    def __init__(self) -> None:
         super().__init__()
-        self.average_down_rate = average_down_rate
-        self.average_down_buy_ratio = average_down_buy_ratio
-        
-    def execute(self, date, cash, holdings: dict, closing_prices) -> list[tuple[str, str, float]]:
+        self.average_down_bands = {
+            "band1": (0.85, 0.5),
+            "band2": (0.70, 1),
+            "band3": (0.50, 2),
+            "bind4": (None, None),
+        }
+        self.state = {symbol: "band1" for symbol in self.symbols}
+    
+    def next_bind(self, bind:str):
+        bands = list(self.average_down_bands.keys())
+        current_index = bands.index(bind)
+        return bands[current_index + 1] if current_index < len(bands) - 1 else bind
+    
+    def execute(self, date, cash, holdings: dict, market_data) -> list[tuple[str, str, float]]:
         # Buy all stocks with equal weight
-        symbols = list(closing_prices.keys())
+        symbols = list(market_data.keys())
         if not symbols:
             return []
-        
+
         operations = []
 
         for symbol, holding in holdings.items():
-            if closing_prices[symbol] < holding.last_avg_down_price * self.average_down_rate:
-                operations.append((OPERATION_BUY, symbol, holding.shares * self.average_down_buy_ratio))
-                holding.last_avg_down_price = closing_prices[symbol]
+            band_threshold, band_buy_ratio = self.average_down_bands[self.state[symbol]]
+            if band_threshold and band_buy_ratio and market_data[symbol]["MA250"] < holding.initial_price * band_threshold:
+                operations.append((OPERATION_BUY, symbol, holding.initial_shares * band_buy_ratio))
+                self.state[symbol] = self.next_bind(self.state[symbol])
+            elif market_data[symbol]["MA250"] > holding.initial_price * band_threshold:
+                self.state[symbol] = "band1" # MA250 exceedes initial price, restart from band1
         return operations
 
+# Buy all stocks with equal weight
 class CashSplitEvenlyStrategy(TradingStrategy):
     def execute(self, date, cash, holdings: dict, closing_prices) -> list[tuple[str, str, float]]:
         # Buy all stocks with equal weight
@@ -129,3 +146,20 @@ class CashSplitEvenlyStrategy(TradingStrategy):
             operations.append((OPERATION_BUY, symbol, cash_per_stock/closing_prices[symbol]))
         
         return operations
+
+
+# Buy the stock with the highest dividend yield
+class CashForHighDivStrategy(TradingStrategy):
+    def execute(self, date, cash, holdings: dict, market_data) -> list[tuple[str, str, float]]:
+        # Buy all stocks with equal weight
+        symbols = list(market_data.keys())
+        if not symbols:
+            return []
+                
+        _, highest_yield_symbol = max([(data["Yield"], symbol) for symbol, data in market_data.items() if data["Yield"] is not None])
+        if cash < market_data[highest_yield_symbol]["Close"]:
+            logging.warning(f"Cash is not enough for buying {highest_yield_symbol}")
+            return []
+        
+        return [(OPERATION_BUY, highest_yield_symbol, cash/market_data[highest_yield_symbol]["Close"])]
+        
