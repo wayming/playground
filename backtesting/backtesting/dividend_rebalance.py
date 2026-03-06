@@ -87,13 +87,15 @@ class Portfolio_Conifg:
     
     # Buy with external fund when stock drops to avg_down_trigger_ratio to average down the holding price
     # Total fund is the percentage of stock that meet the critera multiply by the total market value after drop.
-    avg_down_trigger_ratio: float = 0.6
+    avg_down_trigger_ratio: float = 0.5
     
     initial_fund: float = 100000
     
     floor_shares_rate:float = 0.2
     regular_investment_rate : float = 0.5
 
+    def export(self):
+        return pprint.pformat(dataclasses.asdict(self))
     
 
 class Portfolio:
@@ -132,7 +134,9 @@ class Portfolio:
         holding.avg_down_price = holding.holding_price * self.config.avg_down_trigger_ratio # Price down
         holding.take_profit_price = holding.holding_price * self.config.take_profit_ratio # Price double
         holding.total_purchase_cost += fund_to_use
-        logging.info(f"[{date}] Buy {symbol} at price {unit_price} with fund_to_use {fund_to_use}, get {shares} shares, old holding price at {old_holing_price}, new holding price at {holding.holding_price}")
+        logging.info(f"[{date}] Buy {symbol} at price {unit_price} with fund_to_use {fund_to_use}"
+        f" get {shares} shares, old holding price at {old_holing_price}, new holding price at {holding.holding_price}"
+        f" new holding shares {holding.shares}")
         holding.buys[date] = {
             "fund": fund_to_use,
             "unit_price": unit_price,
@@ -141,7 +145,7 @@ class Portfolio:
         self.cash -= fund_to_use
         pass
     
-    def sell(self, date:datetime.date, symbol:str, sell_ratio:float, unit_price:float):
+    def sell(self, date:datetime.date, symbol:str, sell_shares:int, unit_price:float):
         if symbol not in self.stock_holding:
             raise KeyError(f"No holdings for {symbol}")
     
@@ -149,12 +153,13 @@ class Portfolio:
         if holding.shares <= holding.floor_shares:
             logging.info(f"{symbol} reach floor shares {holding.floor_shares}, current shares {holding.shares}, no sell")
             return
-        sell_shares = holding.shares * sell_ratio
         self.cash += sell_shares * unit_price
         holding.shares -= sell_shares
         holding.market_price = unit_price
         holding.position_value = holding.market_price * holding.shares
-        logging.info(f"[{date}] Sell {symbol} shares {sell_shares} at {unit_price}, holding price {holding.market_price}, return cash {sell_shares * unit_price}")
+        logging.info(f"[{date}] Sell {symbol} shares {sell_shares} at {unit_price},"
+        f" holding price {holding.market_price}, return cash {sell_shares * unit_price}"
+        f" new holding shares {holding.shares}")
         holding.sells[date] = {
             "shares": sell_shares,
             "unit_price": unit_price,
@@ -194,10 +199,11 @@ class Portfolio:
 
         for strategy in self.balance_strategies:
             self.pending_operations.extend(strategy.execute(date, self.cash, self.stock_holding, closing_prices))
-        
+        if self.pending_operations:
+            logging.info(f"pending operations: {self.pending_operations}")
+
         buys = [op for op in self.pending_operations if op[0] == OPERATION_BUY]
         sells = [op for op in self.pending_operations if op[0] == OPERATION_SELL]
-        print(sells)
         for _, symbol, shares in sells:
             self.sell(date, symbol, shares, closing_prices[symbol])
         
@@ -205,10 +211,10 @@ class Portfolio:
             if symbol not in self.stock_holding:
                 holding = Holding(symbol = symbol)
                 self.stock_holding[symbol] = holding
-                if self.cash < shares * closing_prices[symbol]:
-                    cash_required += shares * closing_prices[symbol]
-                    continue
-                self.buy(date, symbol, shares, closing_prices[symbol])
+            if self.cash < shares * closing_prices[symbol]:
+                cash_required += shares * closing_prices[symbol]
+                continue
+            self.buy(date, symbol, shares, closing_prices[symbol])
         
         if self.cash > 0 and self.cash_split_strategy:
             for op, symbol, shares in self.cash_split_strategy.execute(date, self.cash, self.stock_holding, closing_prices):
@@ -216,8 +222,10 @@ class Portfolio:
                     self.buy(date, symbol, shares, closing_prices[symbol])
                 elif op == OPERATION_SELL:
                     raise ValueError("Cash split strategy should not sell")
+            self.cash = 0 # Discards remaining cash
 
         self.populate_market_prices(closing_prices)
+        self.pending_operations = []
 
         return cash_required
     
@@ -248,7 +256,7 @@ class Portfolio:
         
     def show(self):
         for symbol, holding in self.stock_holding.items():
-            logging.info(holding.show())
+            logging.info(holding.export())
 
     
     def estimate_divident(self, dividents:list):
@@ -256,14 +264,15 @@ class Portfolio:
         for row in dividents:
             for symbol, divid_per_share in row.items():
                 if not pd.isna(divid_per_share) and divid_per_share > 0:
-                    total_dividends += self.stock_holding[symbol].shares * divid_per_share
+                    if symbol in self.stock_holding:
+                        total_dividends += self.stock_holding[symbol].shares * divid_per_share
         logging.info(f"Estimate total dividents of the period {int(total_dividends)}")
         return total_dividends
     
 def back_testing_yh_finance(star_date:str, symbols:str, initial_fund: int, years: str, config: Portfolio_Conifg = None, enable_rebalance: bool = True):
     stock_data = yfinance.Tickers(symbols)
-    hist = stock_data.history(start=star_date, period=years, interval='1d')
-    logging.debug(hist[["Close", "Dividends"]])
+    hist = stock_data.history(start=star_date, period=years, interval='1d', auto_adjust=False)
+    logging.info(hist[["Close", "Adj Close", "Dividends"]])
 
     today = datetime.datetime.today()
     last_year_first_day = datetime.datetime(today.year - 1, 1, 1)
@@ -355,7 +364,7 @@ def month_ranges(start :datetime.datetime, end : datetime.datetime):
         start = datetime.datetime(year, month, 1)
         
 def year_ranges(start :datetime.datetime, end : datetime.datetime):
-    while(start < end):
+    while(start <= end):
         yield start
         start = start.replace(year=start.year+1)
 
@@ -390,7 +399,7 @@ if __name__ == "__main__":
     os.makedirs(output_dir, exist_ok=True)
     
     # 设置日志文件路径
-    log_file = os.path.join(output_dir, "backtest.log")
+    log_file = os.path.join(output_dir, f"{args.start}_{args.end}_{args.period}_rollingbacktest.log")
     # 重新配置日志（因为之前可能已经配置过了）
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
@@ -431,6 +440,7 @@ if __name__ == "__main__":
         logging.info(f"\n=== Running backtest for start date: {d.strftime('%Y-%m-%d')} ===")
         # 使用默认配置，将rebalance参数传递给back_testing_yh_finance
         config = Portfolio_Conifg()
+        logging.info(f"Configuration: \n{config.export()}")
         if not args.rebalance:
             logging.info("Rebalancing disabled: only dividend reinvestment")
         else:

@@ -8,9 +8,16 @@
 
             "module": "backtesting.dividend_rebalance",
 
+            "args": [
+                "-start", "2005",
+                "-symbols", "QAN.AX FMG.AX WOW.AX",
+                "-output", "tmp2",
+                "-d",
+                "-rebalance"
+            ],
+
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
-
             "justMyCode": true
         }
     ]

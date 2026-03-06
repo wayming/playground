@@ -1,6 +1,8 @@
 import abc
 import dataclasses
 import pprint
+import logging
+
 OPERATION_BUY = "buy"
 OPERATION_SELL = "sell"
 
@@ -16,7 +18,8 @@ class Holding:
     position_value: float = 0.0
     total_dividend_value: float = 0.0
     total_purchase_cost: float = 0.0
-
+    last_avg_down_price: float = 0.0
+    
     
     # Immutable after the initial buy
     floor_shares: float = 0.0
@@ -25,17 +28,8 @@ class Holding:
     sells: dict = dataclasses.field(default_factory=dict)
 
     
-    def show(self):
-        return f"""[{self.symbol}]
-        shares: \t{self.shares}
-        holding_price: \t{self.holding_price}
-        market_price: \t{self.market_price}
-        position_value: \t{self.position_value}
-        total_dividend_value: \t{self.total_dividend_value}
-        total_purchase_cost: \t{self.total_purchase_cost}
-        buys: \t{pprint.pformat(self.buys)}
-        sells: \t{pprint.pformat(self.sells)}
-    """
+    def export(self):
+        return pprint.pformat(dataclasses.asdict(self))
 
 class TradingStrategy(abc.ABC):
     @abc.abstractmethod
@@ -97,6 +91,26 @@ class AverageDownStrategy(TradingStrategy):
         
         return operations
 
+class AverageDownByClosePriceStrategy(TradingStrategy):
+    def __init__(self, average_down_rate: float = 0.5, average_down_buy_ratio: float = 1.0) -> None:
+        super().__init__()
+        self.average_down_rate = average_down_rate
+        self.average_down_buy_ratio = average_down_buy_ratio
+        
+    def execute(self, date, cash, holdings: dict, closing_prices) -> list[tuple[str, str, float]]:
+        # Buy all stocks with equal weight
+        symbols = list(closing_prices.keys())
+        if not symbols:
+            return []
+        
+        operations = []
+
+        for symbol, holding in holdings.items():
+            if closing_prices[symbol] < holding.last_avg_down_price * self.average_down_rate:
+                operations.append((OPERATION_BUY, symbol, holding.shares * self.average_down_buy_ratio))
+                holding.last_avg_down_price = closing_prices[symbol]
+        return operations
+
 class CashSplitEvenlyStrategy(TradingStrategy):
     def execute(self, date, cash, holdings: dict, closing_prices) -> list[tuple[str, str, float]]:
         # Buy all stocks with equal weight
@@ -105,6 +119,10 @@ class CashSplitEvenlyStrategy(TradingStrategy):
             return []
         
         operations = []
+        
+        if cash < sum([closing_prices[symbol] for symbol in symbols]):
+            logging.warning(f"Cash is not enough for buying all stocks")
+            return []
         
         cash_per_stock = cash / len(symbols)
         for symbol in symbols:
