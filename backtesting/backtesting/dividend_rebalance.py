@@ -14,8 +14,7 @@ import argparse
 from requests.exceptions import RequestsDependencyWarning
 import pandas as pd
 from . import report
-from .strategy import Holding, OPERATION_BUY, OPERATION_SELL
-from .strategy import TradingStrategy, TakeProfitPercentageStrategy, AverageDownStrategy, CashSplitEvenlyStrategy
+from .portfolio import *
 
 warnings.simplefilter("ignore", RequestsDependencyWarning)
 
@@ -24,344 +23,6 @@ pd.set_option('display.max_rows', None)  # 显示所有行
 pd.set_option('display.max_columns', None)  # 显示所有列
 pd.set_option('display.width', None)  # 不限制每行的宽度
 pd.set_option('display.max_colwidth', None)  # 不限制列的宽度
-
-def parse_date(date_str: str):
-    date_formats = ["%d %b %Y", "%d %B %Y"]
-    for f in date_formats:
-        try:
-            date = datetime.datetime.strptime(date_str, f)
-            return date
-        except ValueError:
-            logging.warning(f"Invalid date format {date_str}, try another format")
-    raise ValueError(f"Can not parse date string {date_str}")
-
-def yahoo_finance_csv_loader(sym: str):
-    dividends = collections.OrderedDict()
-    prices = []
-    all_columns = []
-    with open(sym + ".txt") as f:
-        header_line = next(f).replace("Adj Close", "AdjClose")
-        all_columns = header_line.split()
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            line = line.replace("Sept", "Sep")
-            if "Dividend" in line:
-                parts = line.split()
-                date = parse_date(" ".join(parts[:3]))
-                dividends[date] = float(parts[3])
-            else:
-                parts = line.split()
-                price = []
-                assert len(parts) == 9, f"Invalid format of the price line at {sym}.txt, line {line}"
-                price.append(parse_date(" ".join(parts[:3])))
-                price.extend([float(x) for x in parts[3:8]])
-                price.append(parts[8].replace(",",""))
-                prices.append(price)
-
-    prices_df = pd.DataFrame(prices, columns=all_columns)
-    prices_df.set_index('Date', inplace=True)
-    prices_df.index = pd.to_datetime(prices_df.index, errors='coerce')
-    
-    div_df = pd.DataFrame.from_dict(dividends, orient="index", columns=["Dividend"])
-    div_df.index.name = "Date"
-    div_df.index = pd.to_datetime(div_df.index, errors='coerce')  # 转换日期格式
-    
-    all_columns += ["Dividend"]
-    df = prices_df.join(div_df, how="outer")
-    df.sort_index(inplace=True)
-    df["Dividend"] = df["Dividend"].fillna(0)
-
-    for col in all_columns[1:]:
-        df[col] = df[col].astype(float)
-    df["Symbol"] = sym
-
-    return df
-
-@dataclasses.dataclass
-class Portfolio_Conifg:
-    # Sell 20% when price doubled
-    take_profit_ratio : float = 2
-    take_profit_sell_ratio: float = 0.2
-    
-    # Buy with external fund when stock drops to avg_down_trigger_ratio to average down the holding price
-    # Total fund is the percentage of stock that meet the critera multiply by the total market value after drop.
-    avg_down_trigger_ratio: float = 0.5
-    
-    initial_fund: float = 100000
-    
-    floor_shares_rate:float = 0.2
-    regular_investment_rate : float = 0.5
-
-    def export(self):
-        return pprint.pformat(dataclasses.asdict(self))
-    
-
-class Portfolio:
-    def __init__(self, config:Portfolio_Conifg):
-        self.stock_holding : dict[str, Holding] = {}
-        self.total_invest = 0 # Excludes the divident investment
-        self.cash = 0
-        self.config = config
-        self.balance_strategies : list[TradingStrategy] = []
-        self.pending_operations : list[tuple[str, str, float]] = []
-        self.cash_split_strategy : TradingStrategy = CashSplitEvenlyStrategy()
-
-    def add_balance_strategy(self, strategy:TradingStrategy):
-        self.balance_strategies.append(strategy)    
-    
-    def add_cash(self, date, cash: float):
-        logging.info(f"[{date}] Transfer cash {cash}")
-        self.cash += cash
-        self.total_invest += cash
-
-    def buy(self, date:datetime.date, symbol:str, shares:int, unit_price:float):
-        if symbol not in self.stock_holding:
-            holding = Holding(symbol = symbol)
-            self.stock_holding[symbol] = holding
-        
-        holding = self.stock_holding[symbol]
-        fund_to_use = shares * unit_price
-        old_holing_price = holding.holding_price
-        holding.holding_price = (holding.holding_price * holding.shares + fund_to_use)/(holding.shares + shares)
-        holding.market_price = unit_price
-        holding.position_value = holding.market_price * holding.shares
-        if holding.shares == 0:
-            # New buy
-            holding.floor_shares = self.config.floor_shares_rate * shares
-            holding.initial_price = unit_price
-            holding.initial_shares = shares
-        holding.shares += shares
-        holding.avg_down_price = holding.holding_price * self.config.avg_down_trigger_ratio # Price down
-        holding.take_profit_price = holding.holding_price * self.config.take_profit_ratio # Price double
-        holding.total_purchase_cost += fund_to_use
-        logging.info(f"[{date}] Buy {symbol} at price {unit_price} with fund_to_use {fund_to_use}"
-        f" get {shares} shares, old holding price at {old_holing_price}, new holding price at {holding.holding_price}"
-        f" new holding shares {holding.shares}")
-        holding.buys[date] = {
-            "fund": fund_to_use,
-            "unit_price": unit_price,
-            "shares": shares
-        }
-        self.cash -= fund_to_use
-        pass
-    
-    def sell(self, date:datetime.date, symbol:str, sell_shares:int, unit_price:float):
-        if symbol not in self.stock_holding:
-            raise KeyError(f"No holdings for {symbol}")
-    
-        holding = self.stock_holding[symbol]
-        if holding.shares <= holding.floor_shares:
-            logging.info(f"{symbol} reach floor shares {holding.floor_shares}, current shares {holding.shares}, no sell")
-            return
-        self.cash += sell_shares * unit_price
-        holding.shares -= sell_shares
-        holding.market_price = unit_price
-        holding.position_value = holding.market_price * holding.shares
-        logging.info(f"[{date}] Sell {symbol} shares {sell_shares} at {unit_price},"
-        f" holding price {holding.market_price}, return cash {sell_shares * unit_price}"
-        f" new holding shares {holding.shares}")
-        holding.sells[date] = {
-            "shares": sell_shares,
-            "unit_price": unit_price,
-            "return_cash": sell_shares * unit_price
-        }
-        pass
-
-    def dividend(self, date:datetime.date, symbol:str, dividen_per_share: float, market_data: dict = None):
-        if symbol not in self.stock_holding:
-            raise KeyError(f"No holdings for {symbol}")
-
-        if dividen_per_share == 0:
-            return
-        
-        holding = self.stock_holding[symbol]
-        dividend_cash = holding.shares * dividen_per_share
-        
-        # 收到分红现金
-        holding.total_dividend_value += dividend_cash
-        logging.info(f"Receive dividend for {symbol}, {dividen_per_share} per share, return cash {dividend_cash}")
-        
-        # 立即将分红现金用于再投资（如果有价格信息）
-        if dividend_cash > 0 and market_data:
-            for op, symbol, shares in self.cash_split_strategy.execute(date, dividend_cash, self.stock_holding, market_data):
-                if op == OPERATION_BUY:
-                    self.buy(date, symbol, shares, market_data[symbol]["Close"])
-                elif op == OPERATION_SELL:
-                    raise ValueError("Cash split strategy should not sell")
-        
-        # 更新所有股票的市场价格
-        if closing_prices:
-            self.populate_position(closing_prices)
-
-    
-    def rebalance(self, date:datetime.date, market_data: dict):
-        cash_required = 0
-
-        for strategy in self.balance_strategies:
-            self.pending_operations.extend(strategy.execute(date, self.cash, self.stock_holding, market_data))
-        if self.pending_operations:
-            logging.info(f"pending operations: {self.pending_operations}")
-
-        buys = [op for op in self.pending_operations if op[0] == OPERATION_BUY]
-        sells = [op for op in self.pending_operations if op[0] == OPERATION_SELL]
-        for _, symbol, shares in sells:
-            self.sell(date, symbol, shares, market_data[symbol]["Close"])
-        
-        for _, symbol, shares in buys:
-            if symbol not in self.stock_holding:
-                holding = Holding(symbol = symbol)
-                self.stock_holding[symbol] = holding
-            if self.cash < shares * market_data[symbol]["Close"]:
-                cash_required += shares * market_data[symbol]["Close"]
-                continue
-            self.buy(date, symbol, shares, market_data[symbol]["Close"])
-        
-        if self.cash > 0 and self.cash_split_strategy:
-            for op, symbol, shares in self.cash_split_strategy.execute(date, self.cash, self.stock_holding, market_data):
-                if op == OPERATION_BUY:
-                    self.buy(date, symbol, shares, market_data[symbol]["Close"])
-                elif op == OPERATION_SELL:
-                    raise ValueError("Cash split strategy should not sell")
-            self.cash = 0 # Discards remaining cash
-
-        self.populate_position(market_data)
-        self.pending_operations = []
-
-        return cash_required
-    
-    def populate_position(self, market_data: dict):
-        for sym, data in market_data.items():
-            self.stock_holding[sym].market_price = data["Close"]
-            self.stock_holding[sym].position_value = self.stock_holding[sym].shares * data["Close"]
-            
-    def stats(self, market_data:dict, predict_dividents:list):
-        result_stats = {"holding": {}}
-        total_stock_value = 0
-        for symbol, holding in self.stock_holding.items():
-            value = holding.shares * market_data[symbol]["Close"]
-            logging.info(f"{symbol}: {holding.shares}, value {value}")
-            total_stock_value += value
-            result_stats["holding"][symbol] ={
-                "shares": holding.shares,
-                "value": value
-            }
-        result_stats["total_value"] = total_stock_value
-        result_stats["cash_remaining"] = self.cash
-        result_stats["total_invest"] = self.total_invest
-        result_stats["rate_of_return"] = round((total_stock_value - self.total_invest)/self.total_invest, 2)
-        result_stats["total_predict_divident"] = self.estimate_divident(predict_dividents)
-
-        logging.info(f"{pprint.pformat(result_stats)}")
-        return result_stats
-        
-    def show(self):
-        for symbol, holding in self.stock_holding.items():
-            logging.info(holding.export())
-
-    
-    def estimate_divident(self, dividents:list):
-        total_dividends = 0
-        for row in dividents:
-            for symbol, divid_per_share in row.items():
-                if not pd.isna(divid_per_share) and divid_per_share > 0:
-                    if symbol in self.stock_holding:
-                        total_dividends += self.stock_holding[symbol].shares * divid_per_share
-        logging.info(f"Estimate total dividents of the period {int(total_dividends)}")
-        return total_dividends
-    
-def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fund: int, years: str, config: Portfolio_Conifg = None, enable_rebalance: bool = True):
-    stock_data = yfinance.Tickers(symbols)
-    warm_up_date = datetime.datetime(star_date.year -1, star_date.month, star_date.day)
-    hist = stock_data.history(start=warm_up_date, period=years, interval='1d', auto_adjust=False)
-    ma250_all_tickers = hist["Close"].rolling(window=250).mean()
-    rolling_div_sum_all_tickers = hist['Dividends'].rolling(window=250).sum()
-    yield_all_tickers = rolling_div_sum_all_tickers / hist['Close']
-
-    ma250_all_tickers.columns = pd.MultiIndex.from_product([["MA250"], ma250_all_tickers.columns])
-    rolling_div_sum_all_tickers.columns = pd.MultiIndex.from_product([["Rolling_Div_Sum"], rolling_div_sum_all_tickers.columns])
-    yield_all_tickers.columns = pd.MultiIndex.from_product([["Yield"], yield_all_tickers.columns])
-    hist = pd.concat([hist, ma250_all_tickers, rolling_div_sum_all_tickers, yield_all_tickers], axis=1)
-    logging.info(hist[["Close", "Dividends", "MA250", "Yield"]])
-    
-    today = datetime.datetime.today()
-    last_year_first_day = datetime.datetime(today.year - 1, 1, 1)
-    last_year_first_day.strftime("%Y-%m-%d")
-    last_year_hist = stock_data.history(start=last_year_first_day, period='1y', interval='1d')
-    
-    if config is None:
-        config = Portfolio_Conifg()
-    config.initial_fund = initial_fund
-    portfolio = Portfolio(config)
-    portfolio.add_cash(star_date, initial_fund)
-    portfolio.add_balance_strategy(AverageDownStrategy(config.avg_down_trigger_ratio, config.avg_down_trigger_ratio))
-    portfolio.add_balance_strategy(TakeProfitPercentageStrategy(config.take_profit_ratio, config.take_profit_sell_ratio))
-
-    # 历史记录 DataFrame
-    history = []
-    prev_equity_total = None
-
-    for date, row in hist[["Close", "Dividends", "MA250", "Yield"]].loc[star_date:].iterrows():
-
-        close_price_map = row["Close"].dropna().to_dict()
-        dividend_map = row["Dividends"].fillna(0).to_dict()
-        if initial_fund > 0:
-            portfolio.rebalance(date, close_price_map)
-            initial_fund = 0
-            # 记录初始状态
-            position_value = sum(h.position_value for _, h in portfolio.stock_holding.items())
-            equity_total = position_value + portfolio.cash
-            history.append({
-                "date": date,
-                "position_value": position_value,
-                "cash": portfolio.cash,
-                "equity_total": equity_total,
-                "dividend_received": 0,
-                "exposure": position_value / equity_total if equity_total > 0 else 0
-            })
-            prev_equity_total = equity_total
-            continue
-            
-        # 分红
-        dividend_received = 0
-        for sym, divid in dividend_map.items():
-            if divid > 0:
-                portfolio.dividend(date, sym, divid, close_price_map)
-                dividend_received += portfolio.stock_holding.get(sym, Holding(sym)).shares * divid
-
-        # 根据enable_rebalance参数决定是否进行rebalance（止盈、场外加购等）
-        extra_fund_required = 0
-        if enable_rebalance:
-            # 如果启用rebalance，则调用rebalance（止盈和场外加购）
-            extra_fund_required = portfolio.rebalance(date, close_price_map)
-        
-        if extra_fund_required > 0:
-            portfolio.add_cash(date, extra_fund_required)
-            portfolio.rebalance(date, close_price_map)
-
-        # 记录每日状态
-        position_value = sum(h.position_value for sym, h in portfolio.stock_holding.items())
-        equity_total = position_value + portfolio.cash
-        drawdown = 0
-        if prev_equity_total and equity_total < prev_equity_total:
-            drawdown = (prev_equity_total - equity_total) / prev_equity_total
-        history.append({
-            "date": date,
-            "position_value": position_value,
-            "cash": portfolio.cash,
-            "equity_total": equity_total,
-            "dividend_received": dividend_received,
-            "exposure": position_value / equity_total if equity_total > 0 else 0,
-            "drawdown": drawdown
-        })
-        prev_equity_total = max(prev_equity_total, equity_total)  # 历史高点用于计算回撤
-
-    portfolio.show()
-    portfolio.stats(hist["Close"].ffill().iloc[-1].to_dict(), last_year_hist["Dividends"].fillna(0).to_dict(orient="records"))
-
-    # 返回 history DataFrame 和 portfolio（用于计算预测分红）
-    return pd.DataFrame(history).set_index("date"), portfolio
 
 def month_ranges(start :datetime.datetime, end : datetime.datetime):
     while(start < end):
@@ -387,6 +48,126 @@ def subtract_one_year(dt):
         return first_of_next_month - datetime.timedelta(days=1)
 
 
+def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fund: int, years: str, config: Portfolio_Conifg = None, enable_rebalance: bool = True):
+
+    # Populating dates
+    warm_up_date = datetime.datetime(star_date.year -1, star_date.month, star_date.day)
+    end_date = datetime.datetime(star_date.year + int(years.removesuffix('y')), star_date.month, star_date.day)
+    today = datetime.datetime.today()
+    first_day_of_last_year = datetime.datetime(today.year - 1, 1, 1)
+    last_day_of_last_year = datetime.datetime(today.year - 1, 12, 31)
+
+    stock_data = yfinance.Tickers(symbols)
+    hist = stock_data.history(start=warm_up_date, end=last_day_of_last_year, interval='1d', auto_adjust=False)
+    ma250_all_tickers = hist["Close"].rolling(window=365).mean()
+    rolling_div_sum_all_tickers = hist['Dividends'].rolling(window=365).sum()
+    yield_all_tickers = rolling_div_sum_all_tickers / hist['Close']
+
+    ma250_all_tickers.columns = pd.MultiIndex.from_product([["MA250"], ma250_all_tickers.columns])
+    rolling_div_sum_all_tickers.columns = pd.MultiIndex.from_product([["RollingDivSum250"], rolling_div_sum_all_tickers.columns])
+    yield_all_tickers.columns = pd.MultiIndex.from_product([["Yield"], yield_all_tickers.columns])
+    hist = pd.concat([hist, ma250_all_tickers, yield_all_tickers, rolling_div_sum_all_tickers], axis=1)
+    logging.info("\n" + hist[["Close", "Dividends", "MA250", "Yield", "RollingDivSum250"]].to_string())
+
+    end_of_years_market_data = hist[["Close", "Yield"]].ffill().loc[end_date:].resample('YE').last()
+    end_of_years_makert_data_map = {}
+    for date, row in end_of_years_market_data.iterrows():
+        end_of_years_makert_data_map[date] = {
+            ticker: {
+                "close": row["Close"][ticker],
+                "yield": row["Yield"][ticker]
+            }
+            for ticker in row["Close"].index
+            if pd.notna(row["Close"][ticker]) and pd.notna(row["Yield"][ticker])
+        }
+    logging.info(f"End of years market data: \n{end_of_years_market_data}")
+    logging.info(f"End of years market data: \n{pprint.pformat(end_of_years_makert_data_map)}")
+
+    #last_year_first_day.strftime("%Y-%m-%d")
+    last_year_hist = stock_data.history(start=first_day_of_last_year, end=last_day_of_last_year, interval='1d')
+    
+    if config is None:
+        config = Portfolio_Conifg()
+    config.initial_fund = initial_fund
+    portfolio = Portfolio(config)
+    portfolio.add_cash(star_date, initial_fund)
+    portfolio.add_balance_strategy(AverageDownByMA250Strategy(stock_data.symbols))
+    portfolio.add_balance_strategy(TakeProfitPercentageStrategy(config.take_profit_ratio, config.take_profit_sell_ratio))
+
+    # # 历史记录 DataFrame
+    # history = []
+    # prev_equity_total = None
+
+    # for date, row in hist[["Close", "Dividends", "MA250", "Yield"]].loc[star_date:end_date].iterrows():
+
+    #     market_data_map = (
+    #         pd.DataFrame({
+    #             "Close": row["Close"],
+    #             "MA250": row["MA250"],
+    #             "Yield": row["Yield"]
+    #         })
+    #         .dropna(axis=1, how='all')
+    #         .to_dict("index")
+    #     )
+    #     dividend_map = row["Dividends"].fillna(0).to_dict()
+    #     if initial_fund > 0:
+    #         portfolio.initial_equity(date, initial_fund, market_data_map)
+    #         initial_fund = 0
+    #         # 记录初始状态
+    #         position_value = sum(h.position_value for _, h in portfolio.stock_holding.items())
+    #         equity_total = position_value + portfolio.cash
+    #         history.append({
+    #             "date": date,
+    #             "position_value": position_value,
+    #             "cash": portfolio.cash,
+    #             "equity_total": equity_total,
+    #             "dividend_received": 0,
+    #             "exposure": position_value / equity_total if equity_total > 0 else 0
+    #         })
+    #         prev_equity_total = equity_total
+    #         continue
+            
+    #     # 分红
+    #     dividend_received = 0
+    #     for sym, divid in dividend_map.items():
+    #         if divid > 0:
+    #             portfolio.dividend(date, sym, divid, market_data_map)
+    #             dividend_received += portfolio.stock_holding.get(sym, Holding(sym)).shares * divid
+
+    #     # 根据enable_rebalance参数决定是否进行rebalance（止盈、场外加购等）
+    #     extra_fund_required = 0
+    #     if enable_rebalance:
+    #         # 如果启用rebalance，则调用rebalance（止盈和场外加购）
+    #         extra_fund_required = portfolio.rebalance(date, market_data_map)
+        
+    #     if extra_fund_required > 0:
+    #         portfolio.add_cash(date, extra_fund_required)
+    #         portfolio.rebalance(date, market_data_map)
+
+    #     # 记录每日状态
+    #     position_value = sum(h.position_value for sym, h in portfolio.stock_holding.items())
+    #     equity_total = position_value + portfolio.cash
+    #     drawdown = 0
+    #     if prev_equity_total and equity_total < prev_equity_total:
+    #         drawdown = (prev_equity_total - equity_total) / prev_equity_total
+    #     history.append({
+    #         "date": date,
+    #         "position_value": position_value,
+    #         "cash": portfolio.cash,
+    #         "equity_total": equity_total,
+    #         "dividend_received": dividend_received,
+    #         "exposure": position_value / equity_total if equity_total > 0 else 0,
+    #         "drawdown": drawdown
+    #     })
+    #     prev_equity_total = max(prev_equity_total, equity_total)  # 历史高点用于计算回撤
+
+    # portfolio.show()
+
+    # # Populate end stats
+    # portfolio.stats(end_of_years_market_data.iloc[-1].to_dict(), last_year_hist["Dividends"].fillna(0).to_dict(orient="records"))
+
+    # return pd.DataFrame(history).set_index("date"), portfolio
+    return pd.DataFrame([]), portfolio
 if __name__ == "__main__":
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='Stock Backtesting with Dividend Reinvestment')

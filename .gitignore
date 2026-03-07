@@ -13,5 +13,5 @@ backtesting/backtesting.egg-info
 backtesting/output*
 backtesting/dividend_rebalance.cp*
 backtesting/test/*
-backtesting/backtesting/__pycache__/dividend_rebalance.cpython-312.pyc
 backtesting/*.log
+backtesting/backtesting/__pycache__/*

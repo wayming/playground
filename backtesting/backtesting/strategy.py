@@ -34,13 +34,15 @@ class Holding:
 
 class TradingStrategy(abc.ABC):
     @abc.abstractmethod
-    def execute(self, date, cash, holding: Holding, closing_prices) -> list[tuple[str, str, float]]:
+    def execute(self, date, cash, holding: Holding, market_data) -> list[tuple[str, str, float]]:
         """
         Execute trading strategy and return list of operations.
         
         Args:
             date: Current date
-            closing_prices: Dictionary of symbol -> price
+            cash: Current cash balance
+            holding: Current holding
+            market_data: Dictionary of symbol -> market data (e.g., Close price)
             
         Returns:
             List of tuples (operation, symbol, amount) where:
@@ -57,8 +59,8 @@ class TakeProfitPercentageStrategy(TradingStrategy):
         self.take_profit_rate = take_profit_rate
         self.take_profit_sell_ratio = take_profit_sell_ratio
         
-    def execute(self, date, cash, holdings: dict, closing_prices) -> list[tuple[str, str, float]]:
-        symbols = list(closing_prices.keys())
+    def execute(self, date, cash, holdings: dict, market_data) -> list[tuple[str, str, float]]:
+        symbols = list(market_data.keys())
         if not symbols:
             return []
         
@@ -66,7 +68,7 @@ class TakeProfitPercentageStrategy(TradingStrategy):
 
         for symbol, holding in holdings.items():
             avg_cost_per_share = holding.total_purchase_cost/holding.shares
-            if closing_prices[symbol] > avg_cost_per_share * self.take_profit_rate:
+            if market_data[symbol]["Close"] > avg_cost_per_share * self.take_profit_rate:
                 operations.append((OPERATION_SELL, symbol, holding.shares * self.take_profit_sell_ratio))
         
         return operations
@@ -77,9 +79,9 @@ class AverageDownStrategy(TradingStrategy):
         self.average_down_rate = average_down_rate
         self.average_down_buy_ratio = average_down_buy_ratio
         
-    def execute(self, date, cash, holdings: dict, closing_prices) -> list[tuple[str, str, float]]:
+    def execute(self, date, cash, holdings: dict, market_data) -> list[tuple[str, str, float]]:
         # Buy all stocks with equal weight
-        symbols = list(closing_prices.keys())
+        symbols = list(market_data.keys())
         if not symbols:
             return []
         
@@ -87,7 +89,7 @@ class AverageDownStrategy(TradingStrategy):
 
         for symbol, holding in holdings.items():
             avg_cost_per_share = holding.total_purchase_cost/holding.shares
-            if closing_prices[symbol] < avg_cost_per_share * self.average_down_rate:
+            if market_data[symbol]["Close"] < avg_cost_per_share * self.average_down_rate:
                 operations.append((OPERATION_BUY, symbol, holding.shares * self.average_down_buy_ratio))
         
         return operations
@@ -95,8 +97,9 @@ class AverageDownStrategy(TradingStrategy):
 # Average down by MA250
 # Each bind only trigger once, and restart from band1 when MA250 exceeds initial price
 class AverageDownByMA250Strategy(TradingStrategy):
-    def __init__(self) -> None:
+    def __init__(self, symbols) -> None:
         super().__init__()
+        self.symbols = symbols
         self.average_down_bands = {
             "band1": (0.85, 0.5),
             "band2": (0.70, 1),
@@ -123,27 +126,27 @@ class AverageDownByMA250Strategy(TradingStrategy):
             if band_threshold and band_buy_ratio and market_data[symbol]["MA250"] < holding.initial_price * band_threshold:
                 operations.append((OPERATION_BUY, symbol, holding.initial_shares * band_buy_ratio))
                 self.state[symbol] = self.next_bind(self.state[symbol])
-            elif market_data[symbol]["MA250"] > holding.initial_price * band_threshold:
+            elif market_data[symbol]["MA250"] > holding.initial_price:
                 self.state[symbol] = "band1" # MA250 exceedes initial price, restart from band1
         return operations
 
 # Buy all stocks with equal weight
 class CashSplitEvenlyStrategy(TradingStrategy):
-    def execute(self, date, cash, holdings: dict, closing_prices) -> list[tuple[str, str, float]]:
+    def execute(self, date, cash, holdings: dict, market_data) -> list[tuple[str, str, float]]:
         # Buy all stocks with equal weight
-        symbols = list(closing_prices.keys())
+        symbols = list(market_data.keys())
         if not symbols:
             return []
         
         operations = []
         
-        if cash < sum([closing_prices[symbol] for symbol in symbols]):
+        if cash < sum([market_data[symbol]["Close"] for symbol in symbols]):
             logging.warning(f"Cash is not enough for buying all stocks")
             return []
         
         cash_per_stock = cash / len(symbols)
         for symbol in symbols:
-            operations.append((OPERATION_BUY, symbol, cash_per_stock/closing_prices[symbol]))
+            operations.append((OPERATION_BUY, symbol, cash_per_stock/market_data[symbol]["Close"]))
         
         return operations
 
