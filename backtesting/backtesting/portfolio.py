@@ -50,6 +50,11 @@ class Portfolio:
         self.total_invest += cash
 
     def buy(self, date:datetime.date, symbol:str, shares:int, unit_price:float):
+
+        if self.cash < shares * unit_price:
+            logging.info(f"Not enough cash to buy {symbol} {shares} shares at {unit_price}")
+            return
+        
         if symbol not in self.stock_holding:
             holding = Holding(symbol = symbol)
             self.stock_holding[symbol] = holding
@@ -78,6 +83,10 @@ class Portfolio:
             "shares": shares
         }
         self.cash -= fund_to_use
+
+        if self.cash < 0:
+            self.cash = 0 # Set to 0 if negative (should be non-trivial)
+        logging.info(f"[{date}] Cash after buy {self.cash}")
         pass
     
     def sell(self, date:datetime.date, symbol:str, sell_shares:int, unit_price:float):
@@ -113,7 +122,8 @@ class Portfolio:
         dividend_cash = holding.shares * dividen_per_share
         
         # 收到分红现金
-        holding.total_dividend_value += dividend_cash
+        holding.total_dividend_received += dividend_cash
+        self.cash += dividend_cash
         logging.info(f"Receive dividend for {symbol}, {dividen_per_share} per share, return cash {dividend_cash}")
         
         # 立即将分红现金用于再投资（如果有价格信息）
@@ -148,6 +158,7 @@ class Portfolio:
                 self.stock_holding[symbol] = holding
             if self.cash < shares * market_data[symbol]["Close"]:
                 cash_required += shares * market_data[symbol]["Close"]
+                logging.info(f"Not enough cash to buy {shares} shares of {symbol} at {market_data[symbol]['Close']}, required {cash_required}, available {self.cash}")
                 continue
             self.buy(date, symbol, shares, market_data[symbol]["Close"])
         
@@ -157,7 +168,6 @@ class Portfolio:
                     self.buy(date, symbol, shares, market_data[symbol]["Close"])
                 elif op == OPERATION_SELL:
                     raise ValueError("Cash split strategy should not sell")
-            self.cash = 0 # Discards remaining cash
 
         self.populate_position(market_data)
         self.pending_operations = []
@@ -169,37 +179,33 @@ class Portfolio:
             self.stock_holding[sym].market_price = data["Close"]
             self.stock_holding[sym].position_value = self.stock_holding[sym].shares * data["Close"]
             
-    def stats(self, market_data:dict, predict_dividents:list):
-        result_stats = {"holding": {}}
-        total_position_value = 0
-        for symbol, holding in self.stock_holding.items():
-            value = holding.shares * market_data[symbol]["Close"]
-            logging.info(f"{symbol}: {holding.shares}, value {value}")
-            total_position_value += value
-            result_stats["holding"][symbol] ={
-                "shares": holding.shares,
-                "value": value
-            }
-        result_stats["position_value"] = total_position_value
-        result_stats["cash"] = self.cash
-        result_stats["equity_total"] = total_position_value + self.cash
-        result_stats["total_invest"] = self.total_invest
-        result_stats["rate_of_return"] = round((total_position_value - self.total_invest)/self.total_invest, 2)
-        result_stats["dividend_received"] = self.estimate_divident(predict_dividents)
+    def stats(self, market_data:dict):
+        result_stats = {}
+        market_data_iter = iter(market_data.keys())
+        if not (end_market_data := next(market_data_iter, None)):
+            raise ValueError("No market data provided")
 
-        logging.info(f"{pprint.pformat(result_stats)}")
+        first = True
+        while date := next(market_data_iter, None):
+            position_values = [holding.shares * market_data[date][symbol]["Close"] for symbol, holding in self.stock_holding.items()]
+            dividend_receiveds = [holding.shares * market_data[date][symbol]["Close"] * market_data[date][symbol]["Yield"] for symbol, holding in self.stock_holding.items()]
+            if first:
+                result_stats["dividend_received_end_year"] = float(sum(dividend_receiveds))
+                result_stats["position_value_end_year"] = float(sum(position_values))
+                result_stats["cash_end_year"] = self.cash
+                result_stats["total_equity_end_year"] = result_stats["position_value_end_year"] + result_stats["cash_end_year"]
+                first = False
+            else:
+                result_stats["dividend_received_" + date.date().strftime("%Y-%m-%d")] = float(sum(dividend_receiveds))
+                result_stats["position_value_" + date.date().strftime("%Y-%m-%d")] = float(sum(position_values))
+
+        result_stats["total_invest_cost"] = self.total_invest
+        result_stats["total_rate_of_return"] = round((result_stats["position_value_end_year"] - result_stats["total_invest_cost"])/result_stats["total_invest_cost"], 2)
+        result_stats["total_dividend_received"] = sum(holding.total_dividend_received for _, holding in self.stock_holding.items())
+
+        logging.info(f"\n{pprint.pformat(result_stats)}")
         return result_stats
-
-    def estimate_divident(self, dividents:list):
-        total_dividends = 0
-        for row in dividents:
-            for symbol, divid_per_share in row.items():
-                if not pd.isna(divid_per_share) and divid_per_share > 0:
-                    if symbol in self.stock_holding:
-                        total_dividends += self.stock_holding[symbol].shares * divid_per_share
-        logging.info(f"Estimate total dividents of the period {int(total_dividends)}")
-        return total_dividends
 
     def show(self):
         for symbol, holding in self.stock_holding.items():
-            logging.info(holding.export())
+            logging.info(f"\n{holding.export()}")

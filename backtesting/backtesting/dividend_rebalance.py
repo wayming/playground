@@ -51,14 +51,14 @@ def subtract_one_year(dt):
 def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fund: int, years: str, config: Portfolio_Conifg = None, enable_rebalance: bool = True):
 
     # Populating dates
-    warm_up_date = datetime.datetime(star_date.year -1, star_date.month, star_date.day)
-    end_date = datetime.datetime(star_date.year + int(years.removesuffix('y')), star_date.month, star_date.day)
+    warm_up_start_backtest_date = datetime.datetime(star_date.year -1, star_date.month, star_date.day)
+    end_backtest_date = datetime.datetime(star_date.year + int(years.removesuffix('y')), star_date.month, star_date.day)
+    start_of_last_backtest_year = datetime.datetime(end_backtest_date.year - 1, 1, 1)
     today = datetime.datetime.today()
-    first_day_of_last_year = datetime.datetime(today.year - 1, 1, 1)
     last_day_of_last_year = datetime.datetime(today.year - 1, 12, 31)
 
     stock_data = yfinance.Tickers(symbols)
-    hist = stock_data.history(start=warm_up_date, end=last_day_of_last_year, interval='1d', auto_adjust=False)
+    hist = stock_data.history(start=warm_up_start_backtest_date, end=last_day_of_last_year, interval='1d', auto_adjust=False).fillna(0)
     ma250_all_tickers = hist["Close"].rolling(window=365).mean()
     rolling_div_sum_all_tickers = hist['Dividends'].rolling(window=365).sum()
     yield_all_tickers = rolling_div_sum_all_tickers / hist['Close']
@@ -69,22 +69,19 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
     hist = pd.concat([hist, ma250_all_tickers, yield_all_tickers, rolling_div_sum_all_tickers], axis=1)
     logging.info("\n" + hist[["Close", "Dividends", "MA250", "Yield", "RollingDivSum250"]].to_string())
 
-    end_of_years_market_data = hist[["Close", "Yield"]].ffill().loc[end_date:].resample('YE').last()
+    end_of_years_market_data = hist[["Close", "Yield"]].ffill().loc[start_of_last_backtest_year:].resample('YE').last()
     end_of_years_makert_data_map = {}
     for date, row in end_of_years_market_data.iterrows():
         end_of_years_makert_data_map[date] = {
             ticker: {
-                "close": row["Close"][ticker],
-                "yield": row["Yield"][ticker]
+                "Close": row["Close"][ticker],
+                "Yield": row["Yield"][ticker]
             }
             for ticker in row["Close"].index
             if pd.notna(row["Close"][ticker]) and pd.notna(row["Yield"][ticker])
         }
     logging.info(f"End of years market data: \n{end_of_years_market_data}")
     logging.info(f"End of years market data: \n{pprint.pformat(end_of_years_makert_data_map)}")
-
-    #last_year_first_day.strftime("%Y-%m-%d")
-    last_year_hist = stock_data.history(start=first_day_of_last_year, end=last_day_of_last_year, interval='1d')
     
     if config is None:
         config = Portfolio_Conifg()
@@ -94,80 +91,82 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
     portfolio.add_balance_strategy(AverageDownByMA250Strategy(stock_data.symbols))
     portfolio.add_balance_strategy(TakeProfitPercentageStrategy(config.take_profit_ratio, config.take_profit_sell_ratio))
 
-    # # 历史记录 DataFrame
-    # history = []
-    # prev_equity_total = None
+    # 历史记录 DataFrame
+    history = []
+    prev_equity_total = None
 
-    # for date, row in hist[["Close", "Dividends", "MA250", "Yield"]].loc[star_date:end_date].iterrows():
+    for date, row in hist[["Close", "Dividends", "MA250", "Yield"]].loc[star_date:end_backtest_date].iterrows():
 
-    #     market_data_map = (
-    #         pd.DataFrame({
-    #             "Close": row["Close"],
-    #             "MA250": row["MA250"],
-    #             "Yield": row["Yield"]
-    #         })
-    #         .dropna(axis=1, how='all')
-    #         .to_dict("index")
-    #     )
-    #     dividend_map = row["Dividends"].fillna(0).to_dict()
-    #     if initial_fund > 0:
-    #         portfolio.initial_equity(date, initial_fund, market_data_map)
-    #         initial_fund = 0
-    #         # 记录初始状态
-    #         position_value = sum(h.position_value for _, h in portfolio.stock_holding.items())
-    #         equity_total = position_value + portfolio.cash
-    #         history.append({
-    #             "date": date,
-    #             "position_value": position_value,
-    #             "cash": portfolio.cash,
-    #             "equity_total": equity_total,
-    #             "dividend_received": 0,
-    #             "exposure": position_value / equity_total if equity_total > 0 else 0
-    #         })
-    #         prev_equity_total = equity_total
-    #         continue
+        market_data_map = (
+            pd.DataFrame({
+                "Close": row["Close"],
+                "MA250": row["MA250"],
+                "Yield": row["Yield"]
+            })
+            .to_dict("index")
+        )
+        logging.debug(f"Market data for {date}: {market_data_map}")
+        dividend_map = row["Dividends"].fillna(0).to_dict()
+        logging.debug(f"Dividend data for {date}: {dividend_map}")
+        if initial_fund > 0:
+            portfolio.initial_equity(date, initial_fund, market_data_map)
+            portfolio.rebalance(date, market_data_map)
+            initial_fund = 0
+            # 记录初始状态
+            position_value = sum(h.position_value for _, h in portfolio.stock_holding.items())
+            equity_total = position_value + portfolio.cash
+            history.append({
+                "date": date,
+                "position_value": position_value,
+                "cash": portfolio.cash,
+                "equity_total": equity_total,
+                "dividend_received": 0,
+                "exposure": position_value / equity_total if equity_total > 0 else 0
+            })
+            prev_equity_total = equity_total
+            continue
             
-    #     # 分红
-    #     dividend_received = 0
-    #     for sym, divid in dividend_map.items():
-    #         if divid > 0:
-    #             portfolio.dividend(date, sym, divid, market_data_map)
-    #             dividend_received += portfolio.stock_holding.get(sym, Holding(sym)).shares * divid
+        # 分红
+        dividend_received = 0
+        for sym, divid in dividend_map.items():
+            if divid > 0:
+                portfolio.dividend(date, sym, divid, market_data_map)
+                dividend_received += portfolio.stock_holding.get(sym, Holding(sym)).shares * divid
 
-    #     # 根据enable_rebalance参数决定是否进行rebalance（止盈、场外加购等）
-    #     extra_fund_required = 0
-    #     if enable_rebalance:
-    #         # 如果启用rebalance，则调用rebalance（止盈和场外加购）
-    #         extra_fund_required = portfolio.rebalance(date, market_data_map)
+        # 根据enable_rebalance参数决定是否进行rebalance（止盈、场外加购等）
+        extra_fund_required = 0
+        if enable_rebalance:
+            # 如果启用rebalance，则调用rebalance（止盈和场外加购）
+            extra_fund_required = portfolio.rebalance(date, market_data_map)
         
-    #     if extra_fund_required > 0:
-    #         portfolio.add_cash(date, extra_fund_required)
-    #         portfolio.rebalance(date, market_data_map)
+        if extra_fund_required > 0:
+            portfolio.add_cash(date, extra_fund_required)
+            portfolio.rebalance(date, market_data_map)
 
-    #     # 记录每日状态
-    #     position_value = sum(h.position_value for sym, h in portfolio.stock_holding.items())
-    #     equity_total = position_value + portfolio.cash
-    #     drawdown = 0
-    #     if prev_equity_total and equity_total < prev_equity_total:
-    #         drawdown = (prev_equity_total - equity_total) / prev_equity_total
-    #     history.append({
-    #         "date": date,
-    #         "position_value": position_value,
-    #         "cash": portfolio.cash,
-    #         "equity_total": equity_total,
-    #         "dividend_received": dividend_received,
-    #         "exposure": position_value / equity_total if equity_total > 0 else 0,
-    #         "drawdown": drawdown
-    #     })
-    #     prev_equity_total = max(prev_equity_total, equity_total)  # 历史高点用于计算回撤
+        # 记录每日状态
+        position_value = sum(h.position_value for sym, h in portfolio.stock_holding.items())
+        equity_total = position_value + portfolio.cash
+        drawdown = 0
+        if prev_equity_total and equity_total < prev_equity_total:
+            drawdown = (prev_equity_total - equity_total) / prev_equity_total
+        history.append({
+            "date": date,
+            "position_value": position_value,
+            "cash": portfolio.cash,
+            "equity_total": equity_total,
+            "dividend_received": dividend_received,
+            "exposure": position_value / equity_total if equity_total > 0 else 0,
+            "drawdown": drawdown
+        })
+        prev_equity_total = max(prev_equity_total, equity_total)  # 历史高点用于计算回撤
 
-    # portfolio.show()
+    portfolio.show()
 
-    # # Populate end stats
-    # portfolio.stats(end_of_years_market_data.iloc[-1].to_dict(), last_year_hist["Dividends"].fillna(0).to_dict(orient="records"))
+    # Populate end stats
+    portfolio.stats(end_of_years_makert_data_map)
 
-    # return pd.DataFrame(history).set_index("date"), portfolio
-    return pd.DataFrame([]), portfolio
+    return pd.DataFrame(history).set_index("date"), portfolio
+
 if __name__ == "__main__":
     # 解析命令行参数
     parser = argparse.ArgumentParser(description='Stock Backtesting with Dividend Reinvestment')

@@ -16,7 +16,7 @@ class Holding:
     avg_down_price: float = 0.0
     take_profit_price: float = 0.0
     position_value: float = 0.0
-    total_dividend_value: float = 0.0
+    total_dividend_received: float = 0.0
     total_purchase_cost: float = 0.0
     last_avg_down_price: float = 0.0
     initial_shares: float = 0.0
@@ -63,7 +63,6 @@ class TakeProfitPercentageStrategy(TradingStrategy):
         symbols = list(market_data.keys())
         if not symbols:
             return []
-        
         operations = []
 
         for symbol, holding in holdings.items():
@@ -141,12 +140,12 @@ class CashSplitEvenlyStrategy(TradingStrategy):
         operations = []
         
         if cash < sum([market_data[symbol]["Close"] for symbol in symbols]):
-            logging.warning(f"Cash is not enough for buying all stocks")
+            logging.debug(f"Cash is not enough for buying all stocks")
             return []
         
         cash_per_stock = cash / len(symbols)
         for symbol in symbols:
-            operations.append((OPERATION_BUY, symbol, cash_per_stock/market_data[symbol]["Close"]))
+            operations.append((OPERATION_BUY, symbol, int(cash_per_stock/market_data[symbol]["Close"])))
         
         return operations
 
@@ -161,8 +160,8 @@ class CashForHighDivStrategy(TradingStrategy):
                 
         _, highest_yield_symbol = max([(data["Yield"], symbol) for symbol, data in market_data.items() if data["Yield"] is not None])
         if cash < market_data[highest_yield_symbol]["Close"]:
-            logging.warning(f"Cash is not enough for buying {highest_yield_symbol}")
+            logging.debug(f"Cash is not enough for buying {highest_yield_symbol}")
             return []
         
-        return [(OPERATION_BUY, highest_yield_symbol, cash/market_data[highest_yield_symbol]["Close"])]
+        return [(OPERATION_BUY, highest_yield_symbol, int(cash/market_data[highest_yield_symbol]["Close"]))]
         
