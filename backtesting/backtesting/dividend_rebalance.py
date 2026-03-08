@@ -176,7 +176,7 @@ if __name__ == "__main__":
     parser.add_argument('-period', type=str, default='10y', help='Single backtest period (default: 10y)')
     parser.add_argument('-rebalance', action='store_true', help='Enable take profit and average down (default: False)')
     parser.add_argument('-output', type=str, default='output', help='Output directory (default: output)')
-    parser.add_argument('-symbols', type=str, default='BHP.AX CBA.AX WES.AX WDS.AX TCL.AX', help='Stock symbols separated by space (default: "BHP.AX CBA.AX WES.AX WDS.AX TCL.AX")')
+    parser.add_argument('-symbols', type=str, default='BHP.AX CBA.AX WES.AX WDS.AX APA.AX', help='Stock symbols separated by space (default: "BHP.AX CBA.AX WES.AX WDS.AX TCL.AX")')
     parser.add_argument('-initial_fund', type=int, default=100000, help='Initial fund amount (default: 100000)')
     args = parser.parse_args()
     
