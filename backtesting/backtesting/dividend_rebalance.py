@@ -18,11 +18,11 @@ from .portfolio import *
 
 warnings.simplefilter("ignore", RequestsDependencyWarning)
 
-# 设置打印完整 DataFrame
-pd.set_option('display.max_rows', None)  # 显示所有行
-pd.set_option('display.max_columns', None)  # 显示所有列
-pd.set_option('display.width', None)  # 不限制每行的宽度
-pd.set_option('display.max_colwidth', None)  # 不限制列的宽度
+# Set up pandas display options
+pd.set_option('display.max_rows', None)  # Show all rows
+pd.set_option('display.max_columns', None)  # Show all columns
+pd.set_option('display.width', None)  # No limit on line width
+pd.set_option('display.max_colwidth', None)  # No limit on column width
 
 def month_ranges(start :datetime.datetime, end : datetime.datetime):
     while(start < end):
@@ -91,7 +91,7 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
     portfolio.add_balance_strategy(AverageDownByMA250Strategy(stock_data.symbols))
     portfolio.add_balance_strategy(TakeProfitPercentageStrategy(config.take_profit_ratio, config.take_profit_sell_ratio))
 
-    # 历史记录 DataFrame
+    # Historical records DataFrame
     history = []
     prev_equity_total = None
 
@@ -112,7 +112,7 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
             portfolio.initial_equity(date, initial_fund, market_data_map)
             portfolio.rebalance(date, market_data_map)
             initial_fund = 0
-            # 记录初始状态
+            # Record initial state
             position_value = sum(h.position_value for _, h in portfolio.stock_holding.items())
             equity_total = position_value + portfolio.cash
             history.append({
@@ -126,24 +126,24 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
             prev_equity_total = equity_total
             continue
             
-        # 分红
+        # Dividend processing
         dividend_received = 0
         for sym, divid in dividend_map.items():
             if divid > 0:
                 portfolio.dividend(date, sym, divid, market_data_map)
                 dividend_received += portfolio.stock_holding.get(sym, Holding(sym)).shares * divid
 
-        # 根据enable_rebalance参数决定是否进行rebalance（止盈、场外加购等）
+        # Decide whether to rebalance based on enable_rebalance parameter (take profit, average down, etc.)
         extra_fund_required = 0
         if enable_rebalance:
-            # 如果启用rebalance，则调用rebalance（止盈和场外加购）
+            # If rebalance is enabled, call rebalance (take profit and average down)
             extra_fund_required = portfolio.rebalance(date, market_data_map)
         
         if extra_fund_required > 0:
             portfolio.add_cash(date, extra_fund_required)
             portfolio.rebalance(date, market_data_map)
 
-        # 记录每日状态
+        # Record daily status
         position_value = sum(h.position_value for sym, h in portfolio.stock_holding.items())
         equity_total = position_value + portfolio.cash
         drawdown = 0
@@ -158,7 +158,7 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
             "exposure": position_value / equity_total if equity_total > 0 else 0,
             "drawdown": drawdown
         })
-        prev_equity_total = max(prev_equity_total, equity_total)  # 历史高点用于计算回撤
+        prev_equity_total = max(prev_equity_total, equity_total)  # Historical high for drawdown calculation
 
     portfolio.show()
 
@@ -168,7 +168,7 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
     return pd.DataFrame(history).set_index("date"), portfolio
 
 if __name__ == "__main__":
-    # 解析命令行参数
+    # Parse command line arguments
     parser = argparse.ArgumentParser(description='Stock Backtesting with Dividend Reinvestment')
     parser.add_argument('-debug', action='store_true', help='Enable debug logging')
     parser.add_argument('-start', type=int, default=2005, help='Rolling backtest start year (default: 2005)')
@@ -180,17 +180,17 @@ if __name__ == "__main__":
     parser.add_argument('-initial_fund', type=int, default=100000, help='Initial fund amount (default: 100000)')
     args = parser.parse_args()
     
-    # 根据debug参数调整日志级别
+    # Adjust log level based on debug parameter
     if args.debug:
         logging.getLogger().setLevel(logging.DEBUG)
         logging.info("Debug logging enabled")
     
-    # 设置输出目录
+    # Set up output directory
     output_dir = os.path.join(os.getcwd(), args.output)
     os.makedirs(output_dir, exist_ok=True)
     
 
-    # 从start年到end年，每月一个起点，每个测试period
+    # From start year to end year, monthly start points, each test period
     start = datetime.datetime(args.start, 1, 1)
     end = datetime.datetime(args.end, 1, 1)
     period = args.period
@@ -203,12 +203,12 @@ if __name__ == "__main__":
     
     rolling_results = []
     
-    # 预加载所有年份的分红数据（用于预测）
+    # Preload dividend data for all years (for prediction)
     all_symbols = args.symbols
     stock_data = yfinance.Tickers(all_symbols)
     full_hist = stock_data.history(start=start, end=first_day_of_current_year, interval='1d')
     
-    # 计算每年的分红总额
+    # Calculate total dividend amount for each year
     yearly_div = {}
     for date, row in full_hist["Dividends"].iterrows():
         year = date.year
@@ -221,16 +221,16 @@ if __name__ == "__main__":
                 yearly_div[year][sym] += divid
     
     for d in year_ranges(start, end):
-        # 设置日志文件路径
+        # Set up log file path
         log_file = os.path.join(output_dir, f"{d.strftime('%Y')}_{args.period}_rollingbacktest.log")
-        # 重新配置日志（因为之前可能已经配置过了）
+        # Reconfigure logging (might have been configured before)
         for handler in logging.root.handlers[:]:
             logging.root.removeHandler(handler)
         logging.basicConfig(filename=log_file, level=logging.DEBUG if args.debug else logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
         logging.info(f"Configuration: debug={args.debug}, start={d}, period={period}, rebalance={args.rebalance}, output={args.output}, symbols='{args.symbols}', initial_fund={args.initial_fund}")
         logging.info(f"\n=== Running backtest for start date: {d.strftime('%Y-%m-%d')} ===")
-        # 使用默认配置，将rebalance参数传递给back_testing_yh_finance
+        # Use default configuration, pass rebalance parameter to back_testing_yh_finance
         config = Portfolio_Conifg()
         logging.info(f"Configuration: \n{config.export()}")
         if not args.rebalance:
@@ -240,30 +240,30 @@ if __name__ == "__main__":
         
         history, portfolio = back_testing_yh_finance(d, all_symbols, args.initial_fund, period, config, args.rebalance)
         
-        # 为每个起点生成单独的 backtest_report（不覆盖）
+        # Generate separate backtest_report for each start point (no overwrite)
         output = os.path.join(output_dir, f"backtest_{d.strftime('%Y%m%d')}.png")
         report.plot_report(history, title=f"Backtest: Start {d.strftime('%Y-%m-%d')}, {period}", output=output)
         
-        # 计算关键指标
+        # Calculate key metrics
         if not history.empty:
             initial_equity = history["equity_total"].iloc[0]
             final_equity = history["equity_total"].iloc[-1]
             total_return = (final_equity - initial_equity) / initial_equity
             
-            # 计算 CAGR（使用实际总投资额）
+            # Calculate CAGR (using actual total investment)
             years = (history.index[-1] - history.index[0]).days / 365.25
             total_invest = portfolio.total_invest
             cagr = (final_equity / total_invest) ** (1/years) - 1 if years > 0 and total_invest > 0 else 0
             
-            # 计算 Max Drawdown
+            # Calculate Max Drawdown
             rolling_max = history["equity_total"].cummax()
             drawdown = (history["equity_total"] - rolling_max) / rolling_max
             max_drawdown = drawdown.min()
             
-            # 累计分红
+            # Cumulative dividends
             total_dividend = history["dividend_received"].sum()
             
-            # 预测分红：期末 shares × last year 年分红（最新的完整年份分红数据）
+            # Predicted dividend: end shares × last year dividend (latest complete year dividend data)
             predicted_div = 0
             if last_year_of_today in yearly_div:
                 for sym, h in portfolio.stock_holding.items():
@@ -292,7 +292,7 @@ if __name__ == "__main__":
             })
             logging.info(f"Start: {d.strftime('%Y-%m-%d')}, CAGR: {cagr:.2%}, MaxDD: {max_drawdown:.2%}, Total Div: {total_dividend:.0f}, Predicted: {predicted_div:.0f}")
     
-    # 绘制 rolling 结果分布图
+    # Plot rolling results distribution chart
     if rolling_results:
         output = os.path.join(output_dir, "rolling_backtest_report.png")
         report.plot_rolling_results(rolling_results, output)

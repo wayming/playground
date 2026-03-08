@@ -15,3 +15,4 @@ backtesting/dividend_rebalance.cp*
 backtesting/test/*
 backtesting/*.log
 backtesting/backtesting/__pycache__/*
+backtesting/test*
