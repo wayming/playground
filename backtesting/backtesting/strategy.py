@@ -122,11 +122,13 @@ class AverageDownByMA250Strategy(TradingStrategy):
 
         for symbol, holding in holdings.items():
             band_threshold, band_buy_ratio = self.average_down_bands[self.state[symbol]]
-            if band_threshold and band_buy_ratio and market_data[symbol]["MA250"] < holding.initial_price * band_threshold:
+            if band_threshold and band_buy_ratio and market_data[symbol]["Close"] < market_data[symbol]["MA250"] * band_threshold:
                 operations.append((OPERATION_BUY, symbol, holding.initial_shares * band_buy_ratio))
+                logging.info(f"Average down by MA250: {symbol} {holding.initial_shares} shares at {market_data[symbol]['Close']}, "
+                f"reach {self.state[symbol]} threshold {band_threshold}")
                 self.state[symbol] = self.next_bind(self.state[symbol])
-            elif market_data[symbol]["MA250"] > holding.initial_price:
-                self.state[symbol] = "band1" # MA250 exceedes initial price, restart from band1
+            elif market_data[symbol]["Close"] > market_data[symbol]["MA250"]:
+                self.state[symbol] = "band1" # close price exceeds MA250, restart from band1
         return operations
 
 # Buy all stocks with equal weight

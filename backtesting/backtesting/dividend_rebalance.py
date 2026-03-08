@@ -189,12 +189,6 @@ if __name__ == "__main__":
     output_dir = os.path.join(os.getcwd(), args.output)
     os.makedirs(output_dir, exist_ok=True)
     
-    # 设置日志文件路径
-    log_file = os.path.join(output_dir, f"{args.start}_{args.end}_{args.period}_rollingbacktest.log")
-    # 重新配置日志（因为之前可能已经配置过了）
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
-    logging.basicConfig(filename=log_file, level=logging.DEBUG if args.debug else logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # 从start年到end年，每月一个起点，每个测试period
     start = datetime.datetime(args.start, 1, 1)
@@ -206,7 +200,6 @@ if __name__ == "__main__":
     last_year_of_today = today.year - 1
     end_year = end.year
 
-    logging.info(f"Configuration: debug={args.debug}, start={args.start}, end={args.end}, period={period}, rebalance={args.rebalance}, output={args.output}, symbols='{args.symbols}', initial_fund={args.initial_fund}")
     
     rolling_results = []
     
@@ -228,6 +221,14 @@ if __name__ == "__main__":
                 yearly_div[year][sym] += divid
     
     for d in year_ranges(start, end):
+        # 设置日志文件路径
+        log_file = os.path.join(output_dir, f"{d.strftime('%Y')}_{args.period}_rollingbacktest.log")
+        # 重新配置日志（因为之前可能已经配置过了）
+        for handler in logging.root.handlers[:]:
+            logging.root.removeHandler(handler)
+        logging.basicConfig(filename=log_file, level=logging.DEBUG if args.debug else logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+        logging.info(f"Configuration: debug={args.debug}, start={d}, period={period}, rebalance={args.rebalance}, output={args.output}, symbols='{args.symbols}', initial_fund={args.initial_fund}")
         logging.info(f"\n=== Running backtest for start date: {d.strftime('%Y-%m-%d')} ===")
         # 使用默认配置，将rebalance参数传递给back_testing_yh_finance
         config = Portfolio_Conifg()

@@ -200,7 +200,7 @@ class Portfolio:
                 result_stats["position_value_" + date.date().strftime("%Y-%m-%d")] = float(sum(position_values))
 
         result_stats["total_invest_cost"] = self.total_invest
-        result_stats["total_rate_of_return"] = round((result_stats["position_value_end_year"] - result_stats["total_invest_cost"])/result_stats["total_invest_cost"], 2)
+        result_stats["total_rate_of_return"] = str(round(100 * (result_stats["position_value_end_year"] - result_stats["total_invest_cost"])/result_stats["total_invest_cost"], 2)) + "%"
         result_stats["total_dividend_received"] = sum(holding.total_dividend_received for _, holding in self.stock_holding.items())
 
         logging.info(f"\n{pprint.pformat(result_stats)}")
