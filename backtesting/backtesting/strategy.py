@@ -100,13 +100,15 @@ class AverageDownByMA250Strategy(TradingStrategy):
         super().__init__()
         self.symbols = symbols
         self.average_down_bands = {
-            "band1": (0.85, 0.5),
-            "band2": (0.70, 1),
-            "band3": (0.50, 2),
-            "bind4": (None, None),
+            "band1": (0.85, 0.2),
+            "band2": (0.70, 0.4),
+            "band3": (0.55, 0.6),
+            "band4": (0.40, 0.8),
+            "band5": (0.25, 1),
+            "bind6": (None, None),
         }
         self.state = {symbol: "band1" for symbol in self.symbols}
-    
+        self.cap = 20000
     def next_bind(self, bind:str):
         bands = list(self.average_down_bands.keys())
         current_index = bands.index(bind)
@@ -123,7 +125,7 @@ class AverageDownByMA250Strategy(TradingStrategy):
         for symbol, holding in holdings.items():
             band_threshold, band_buy_ratio = self.average_down_bands[self.state[symbol]]
             if band_threshold and band_buy_ratio and market_data[symbol]["Close"] < market_data[symbol]["MA250"] * band_threshold:
-                operations.append((OPERATION_BUY, symbol, holding.initial_shares * band_buy_ratio))
+                operations.append((OPERATION_BUY, symbol, min(int(holding.shares * band_buy_ratio * market_data[symbol]["Close"]), self.cap)//market_data[symbol]["Close"]))
                 logging.info(f"Average down by MA250: {symbol} {holding.initial_shares} shares at {market_data[symbol]['Close']}, "
                 f"reach {self.state[symbol]} threshold {band_threshold}")
                 self.state[symbol] = self.next_bind(self.state[symbol])
