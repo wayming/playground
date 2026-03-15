@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # 现有 Selenium Grid
+  selenium-hub:
+    image: selenium/hub:4.35.0
+    container_name: selenium-hub
+    ports:
+      - "4444:4444"
+      - "4442:4442"
+      - "4443:4443"
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4444/wd/hub/status"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - claude_workspace
+
+  chrome-node:
+    image: selenium/node-chrome:4.35.0
+    container_name: selenium-node-chrome
+    depends_on:
+      selenium-hub:
+        condition: service_healthy
+    ports:
+      - "5900:5900"  # VNC 端口
+    environment:
+      - SE_EVENT_BUS_HOST=selenium-hub
+      - SE_EVENT_BUS_PUBLISH_PORT=4442
+      - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
+      - SE_NODE_GRID_URL=http://selenium-hub:4444
+      - SE_NODE_MAX_SESSIONS=1
+      - SE_NODE_VNC_PORT=5900
+      - SE_VNC_PASSWORD=claude123
+      # 移除 headless，以便看到浏览器
+      - SE_NODE_OPTS="--no-sandbox --disable-gpu --disable-dev-shm-usage --window-size=1280,1024"
+    shm_size: "2g"
+    volumes:
+      - /dev/shm:/dev/shm
+    networks:
+      - claude_workspace
+
+# 使用外部已存在的 claude_workspace
+networks:
+  claude_workspace:
+    external: true

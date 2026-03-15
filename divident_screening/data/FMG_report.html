@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FMG.AX - 12刀评分报告</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { text-align: center; color: #fff; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header .industry { color: #888; font-size: 1.2em; }
+        .score-card { background: rgba(255,255,255,0.1); border-radius: 20px; padding: 30px; margin-bottom: 30px; display: flex; align-items: center; justify-content: center; gap: 40px; }
+        .score-circle { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(#1890ff 232.79999999999998deg, rgba(255,255,255,0.1) 0deg); display: flex; align-items: center; justify-content: center; position: relative; }
+        .score-circle::before { content: ''; position: absolute; width: 120px; height: 120px; background: #1a1a2e; border-radius: 50%; }
+        .score-circle .score-text { position: relative; z-index: 1; text-align: center; color: #fff; }
+        .score-circle .score-text .big { font-size: 2.5em; font-weight: bold; }
+        .score-circle .score-text .label { font-size: 0.9em; color: #888; }
+        .rating { color: #1890ff; font-size: 1.8em; font-weight: bold; }
+        .content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .chart-card { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px; }
+        .chart-card h3 { color: #fff; margin-bottom: 15px; font-size: 1.2em; }
+        #radarChart { width: 100%; height: 400px; }
+        .checks { display: flex; gap: 20px; flex-wrap: wrap; }
+        .check-item { padding: 8px 16px; border-radius: 20px; font-size: 0.9em; }
+        .check-pass { background: rgba(82, 196, 26, 0.2); color: #52c41a; }
+        .check-fail { background: rgba(255, 77, 79, 0.2); color: #ff4d4f; }
+        .table-card { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px; grid-column: 1 / -1; }
+        .table-card h3 { color: #fff; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th { color: #888; font-weight: normal; }
+        td { color: #fff; }
+        .score-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+        .score-bar-fill { height: 100%; background: linear-gradient(90deg, #1890ff, #52c41a); border-radius: 4px; }
+        @media (max-width: 768px) { .content { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>FMG.AX</h1>
+            <div class="industry">Materials</div>
+        </div>
+
+        <div class="score-card">
+            <div class="score-circle">
+                <div class="score-text">
+                    <div class="big">65%</div>
+                    <div class="label">得分率</div>
+                </div>
+            </div>
+            <div class="rating">★★★★☆ 良好</div>
+            <div style="color: #fff; text-align: center;">
+                <div style="font-size: 2em; font-weight: bold;">39</div>
+                <div style="color: #888;">/ 60 分</div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="chart-card">
+                <h3>六维能力图</h3>
+                <div id="radarChart"></div>
+            </div>
+
+            <div class="chart-card">
+                <h3>检查结果</h3>
+                <div class="checks">
+                    <span class="check-item check-pass">+ NPAT</span><span class="check-item check-pass">+ FCF Yield</span><span class="check-item check-pass">+ Net Debt/EBITDA</span><span class="check-item check-pass">+ Dividend Policy</span>
+                    
+                </div>
+            </div>
+
+            <div class="table-card">
+                <h3>详细指标</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>指标</th>
+                            <th>数值</th>
+                            <th>基准</th>
+                            <th>得分</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Production</td>
+                            <td>-0.02 %</td>
+                            <td>>0%</td>
+                            <td style="width: 30%;">
+                                <div class="score-bar"><div class="score-bar-fill" style="width: 0.0%"></div></div>
+                                <span>0.0/10</span>
+                            </td>
+                        </tr><tr>
+                            <td>NPAT</td>
+                            <td>3734.0 $M</td>
+                            <td>>0</td>
+                            <td style="width: 30%;">
+                                <div class="score-bar"><div class="score-bar-fill" style="width: 100.0%"></div></div>
+                                <span>10.0/10</span>
+                            </td>
+                        </tr><tr>
+                            <td>FCF Yield</td>
+                            <td>9.6 %</td>
+                            <td>>8%</td>
+                            <td style="width: 30%;">
+                                <div class="score-bar"><div class="score-bar-fill" style="width: 100.0%"></div></div>
+                                <span>10.0/10</span>
+                            </td>
+                        </tr><tr>
+                            <td>Net Debt/EBITDA</td>
+                            <td>0.12 x</td>
+                            <td><1.0x</td>
+                            <td style="width: 30%;">
+                                <div class="score-bar"><div class="score-bar-fill" style="width: 88.00000000000001%"></div></div>
+                                <span>8.8/10</span>
+                            </td>
+                        </tr><tr>
+                            <td>Dividend Policy</td>
+                            <td>58.65 %</td>
+                            <td>40%-60%</td>
+                            <td style="width: 30%;">
+                                <div class="score-bar"><div class="score-bar-fill" style="width: 100.0%"></div></div>
+                                <span>10.0/10</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var chart = echarts.init(document.getElementById('radarChart'));
+        var option = {
+            backgroundColor: 'transparent',
+            tooltip: {},
+            radar: {
+                indicator: [{"name": "Production", "max": 10}, {"name": "NPAT", "max": 10}, {"name": "FCF Yield", "max": 10}, {"name": "Net Debt/EBITDA", "max": 10}, {"name": "Dividend Policy", "max": 10}, {"name": "", "max": 10}],
+                shape: 'polygon',
+                splitNumber: 5,
+                axisName: { color: '#fff', fontSize: 14 },
+                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+                splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.05)'] } },
+                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } }
+            },
+            series: [{
+                name: 'Score',
+                type: 'radar',
+                data: [{
+                    value: [0, 10, 10, 8.8, 10.0, 0],
+                    name: '行业指标',
+                    areaStyle: { color: 'rgba(24, 144, 255, 0.3)' },
+                    lineStyle: { color: '#1890ff', width: 3 },
+                    itemStyle: { color: '#1890ff' }
+                }]
+            }]
+        };
+        chart.setOption(option);
+        window.addEventListener('resize', function() { chart.resize(); });
+    </script>
+</body>
+</html>

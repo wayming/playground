@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASX Stock Analyzer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --bg-card-hover: #22222e;
+            --text-primary: #f0f0f5;
+            --text-secondary: #8888a0;
+            --text-muted: #555566;
+            --accent: #00d4aa;
+            --accent-glow: rgba(0, 212, 170, 0.3);
+            --accent-dim: rgba(0, 212, 170, 0.15);
+            --danger: #ff4757;
+            --warning: #ffa502;
+            --success: #00d4aa;
+            --border: #2a2a3a;
+            --font-display: 'Outfit', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-display);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, var(--accent-dim) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(100, 50, 150, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Header */
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 300;
+        }
+
+        /* Search Section */
+        .search-section {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-group input {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            padding: 1rem 1.5rem;
+            padding-right: 100px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            width: 300px;
+            transition: all 0.3s ease;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-dim);
+        }
+
+        .input-group input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .input-group select {
+            position: absolute;
+            right: 8px;
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .btn-analyze {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 1rem 2rem;
+            background: var(--accent);
+            color: var(--bg-primary);
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-analyze:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px var(--accent-glow);
+        }
+
+        .btn-analyze:active {
+            transform: translateY(0);
+        }
+
+        .btn-analyze:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-portfolio {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .btn-portfolio:hover {
+            border-color: var(--accent);
+            background: var(--bg-secondary);
+        }
+
+        .btn-analyze.loading::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: var(--bg-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        @keyframes spin {
+            to { transform: translateY(-50%) rotate(360deg); }
+        }
+
+        /* Results Section */
+        .results-section {
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .results-section.visible {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Score Display */
+        .score-display {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .score-circle {
+            position: relative;
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 1.5rem;
+        }
+
+        .score-circle svg {
+            transform: rotate(-90deg);
+        }
+
+        .score-circle-bg {
+            fill: none;
+            stroke: var(--bg-secondary);
+            stroke-width: 8;
+        }
+
+        .score-circle-fill {
+            fill: none;
+            stroke: var(--accent);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 502;
+            stroke-dashoffset: 502;
+            transition: stroke-dashoffset 1.5s ease-out;
+        }
+
+        .score-circle-fill.low { stroke: var(--danger); }
+        .score-circle-fill.medium { stroke: var(--warning); }
+        .score-circle-fill.high { stroke: var(--success); }
+
+        .score-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .score-number {
+            font-family: var(--font-mono);
+            font-size: 3rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .score-number.low { color: var(--danger); }
+        .score-number.medium { color: var(--warning); }
+        .score-number.high { color: var(--success); }
+
+        .score-max {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .score-label {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .score-label.low { color: var(--danger); }
+        .score-label.medium { color: var(--warning); }
+        .score-label.high { color: var(--success); }
+
+        /* Radar Chart */
+        .radar-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        #radarChart {
+            width: 100%;
+            max-width: 400px;
+            height: 350px;
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric-item {
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .metric-item:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .metric-name {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-value {
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .metric-bar {
+            height: 4px;
+            background: var(--bg-primary);
+            border-radius: 2px;
+            margin-top: 0.75rem;
+            overflow: hidden;
+        }
+
+        .metric-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 1s ease-out;
+        }
+
+        .metric-bar-fill.high { background: var(--success); }
+        .metric-bar-fill.medium { background: var(--warning); }
+        .metric-bar-fill.low { background: var(--danger); }
+
+        /* Checks */
+        .checks-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .check-item.passed {
+            border-left: 3px solid var(--success);
+        }
+
+        .check-item.failed {
+            border-left: 3px solid var(--danger);
+        }
+
+        .check-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .check-item.passed .check-icon {
+            background: var(--success);
+            color: var(--bg-primary);
+        }
+
+        .check-item.failed .check-icon {
+            background: var(--danger);
+            color: var(--bg-primary);
+        }
+
+        /* Error State */
+        .error-message {
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid var(--danger);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--danger);
+            margin-top: 2rem;
+        }
+
+        /* History */
+        .history-section {
+            margin-top: 3rem;
+            animation: fadeIn 0.5s ease-out 0.5s both;
+        }
+
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .history-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .history-item:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
+        .history-symbol {
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .history-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Loading animation */
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .search-section {
+                flex-direction: column;
+            }
+
+            .input-group input {
+                width: 100%;
+            }
+
+            .btn-analyze {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ASX Stock Analyzer</h1>
+            <p class="subtitle">Financial scoring & analysis tool</p>
+        </header>
+
+        <div class="search-section">
+            <div class="input-group">
+                <input type="text" id="symbolInput" placeholder="Enter symbol (e.g., FMG)" maxlength="10">
+                <select id="industrySelect">
+                    <option value="materials">Materials (Mining)</option>
+                    <option value="banks">Financial (Banks)</option>
+                    <option value="infrastructure">Infrastructure</option>
+                    <option value="consumer">Consumer Staples</option>
+                    <option value="healthcare">Healthcare</option>
+                    <option value="telecom">Telecom</option>
+                </select>
+            </div>
+            <button class="btn-analyze" id="analyzeBtn" onclick="analyzeStock()">Analyze</button>
+            <button class="btn-portfolio" onclick="showPeers()">同业对比</button>
+        </div>
+
+        <div id="resultsSection" class="results-section">
+            <div class="results-grid">
+                <!-- Score Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Score</span>
+                        <span id="symbolDisplay" style="font-family: var(--font-mono); font-weight: 600;"></span>
+                    </div>
+                    <div class="score-display">
+                        <div class="score-circle">
+                            <svg width="180" height="180" viewBox="0 0 180 180">
+                                <circle class="score-circle-bg" cx="90" cy="90" r="80"></circle>
+                                <circle id="scoreCircle" class="score-circle-fill" cx="90" cy="90" r="80"></circle>
+                            </svg>
+                            <div class="score-value">
+                                <div id="scoreNumber" class="score-number">0</div>
+                                <div id="scoreMax" class="score-max">/ 60</div>
+                            </div>
+                        </div>
+                        <div id="scoreLabel" class="score-label">Analyzing...</div>
+                    </div>
+                </div>
+
+                <!-- Radar Chart Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Radar Chart</span>
+                    </div>
+                    <div class="radar-container">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Metrics Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Metrics</span>
+                    </div>
+                    <div id="metricsGrid" class="metrics-grid"></div>
+                </div>
+
+                <!-- Checks Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <span class="card-title">Checks</span>
+                    </div>
+                    <div id="checksList" class="checks-list"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <!-- Portfolio Modal -->
+        <div id="portfolioModal" class="modal" style="display: none;" onclick="if(event.target === this) closePortfolio()">
+            <div class="modal-content" style="max-width: 1200px;">
+                <div class="modal-header">
+                    <h2>同业对比分析</h2>
+                    <span class="close" onclick="closePortfolio()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <!-- Industry Tabs -->
+                    <div class="industry-tabs" id="industryTabs"></div>
+                    <!-- Radar Chart Container -->
+                    <div class="radar-container">
+                        <canvas id="portfolioRadarChart"></canvas>
+                    </div>
+                    <!-- Stock List by Industry -->
+                    <div id="portfolioStats" class="portfolio-stats"></div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .industry-tabs {
+                display: flex;
+                gap: 0.5rem;
+                margin-bottom: 1.5rem;
+                flex-wrap: wrap;
+            }
+            .industry-tab {
+                padding: 0.5rem 1rem;
+                background: var(--bg-secondary);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                cursor: pointer;
+                transition: all 0.2s;
+                color: var(--text-secondary);
+            }
+            .industry-tab:hover {
+                background: var(--bg-tertiary);
+            }
+            .industry-tab.active {
+                background: var(--accent);
+                color: var(--bg-primary);
+                border-color: var(--accent);
+            }
+            .radar-container {
+                height: 500px;
+                margin-bottom: 1.5rem;
+            }
+
+        <style>
+            .modal {
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 1000;
+            }
+            .modal-content {
+                background: var(--bg-primary);
+                border-radius: 20px;
+                padding: 2rem;
+                max-width: 900px;
+                width: 90%;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 1.5rem;
+            }
+            .modal-header h2 {
+                margin: 0;
+            }
+            .close {
+                font-size: 2rem;
+                cursor: pointer;
+                color: var(--text-muted);
+            }
+            .close:hover { color: var(--text-primary); }
+            .portfolio-stats {
+                display: flex;
+                gap: 1rem;
+                flex-wrap: wrap;
+            }
+            .stat-card {
+                background: var(--bg-secondary);
+                padding: 1rem;
+                border-radius: 10px;
+                min-width: 150px;
+            }
+            .stock-list {
+                display: flex;
+                flex-direction: column;
+                gap: 0.5rem;
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .stock-item {
+                display: flex;
+                align-items: center;
+                padding: 0.75rem 1rem;
+                background: var(--bg-secondary);
+                border-radius: 8px;
+                border-left: 4px solid;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .stock-item:hover {
+                transform: translateX(4px);
+                background: var(--bg-tertiary);
+            }
+            .stock-symbol {
+                font-weight: 700;
+                font-size: 1.1rem;
+                width: 60px;
+            }
+            .stock-score {
+                font-family: var(--font-mono);
+                font-weight: 600;
+                margin-left: auto;
+                padding: 0.25rem 0.5rem;
+                background: var(--bg-primary);
+                border-radius: 4px;
+            }
+            .stock-industry {
+                font-size: 0.75rem;
+                color: var(--text-muted);
+                margin-left: 1rem;
+                text-transform: uppercase;
+            }
+
+            /* Professional Comparison Table */
+            .comp-table-container {
+                overflow-x: auto;
+                max-height: 500px;
+                overflow-y: auto;
+            }
+            .comp-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.85rem;
+            }
+            .comp-table th {
+                background: var(--bg-tertiary);
+                padding: 0.75rem 0.5rem;
+                text-align: left;
+                font-weight: 600;
+                position: sticky;
+                top: 0;
+                z-index: 10;
+                white-space: nowrap;
+            }
+            .comp-table td {
+                padding: 0.6rem 0.5rem;
+                border-bottom: 1px solid var(--border);
+                font-family: var(--font-mono);
+                white-space: nowrap;
+            }
+            .comp-table tr:hover {
+                background: var(--bg-secondary);
+            }
+            .stock-cell { font-family: var(--font-display); }
+            .industry-cell { text-transform: capitalize; }
+            .score-cell {
+                font-weight: 700;
+                text-align: center;
+            }
+            .score-cell.high { color: var(--success); }
+            .score-cell.med { color: var(--warning); }
+            .score-cell.low { color: var(--danger); }
+            .good { color: var(--success); }
+            .med { color: var(--warning); }
+            .bad { color: var(--danger); }
+            .na { color: var(--text-muted); }
+        </style>
+
+        <script>
+            // let scatterChart = null; // replaced by portfolioChart
+
+            // Stock colors for radar chart overlay
+            const stockColors = [
+                'rgba(0, 212, 170, 0.7)',   // 青色
+                'rgba(255, 107, 107, 0.7)',  // 红色
+                'rgba(78, 205, 196, 0.7)',   // 蓝绿色
+                'rgba(155, 89, 182, 0.7)',   // 紫色
+                'rgba(243, 156, 18, 0.7)',   // 橙色
+                'rgba(52, 152, 219, 0.7)',   // 蓝色
+            ];
+
+            // Industry metrics definition (from score_system.md)
+            // key: matching key in details, name: display name, altKeys: alternative keys for matching
+            const industryMetrics = {
+                'banks': [
+                    { key: 'NIM', name: '净息差', altKeys: ['净息差'], benchmark: [1.8, 2.1], polarity: 'higher', good: 1.95, bad: 1.8 },
+                    { key: 'CET1', name: '资本充足率', altKeys: ['CET1', '资本充足率'], benchmark: [11.5, 12.5], polarity: 'higher', good: 12.5, bad: 11.5 },
+                    { key: 'Cost-to-Income', name: '成本收入比', altKeys: ['成本收入比'], benchmark: [43, 46], polarity: 'lower', good: 43, bad: 46 },
+                    { key: 'ROE', name: '净资产收益率', altKeys: ['ROE', '净资产收益率'], benchmark: [11, 12], polarity: 'higher', good: 12, bad: 11 },
+                    { key: 'Bad Debt', name: '不良贷款率', altKeys: ['Bad Debt', '不良贷款率'], benchmark: [0.1, 0.15], polarity: 'lower', good: 0.1, bad: 0.15 },
+                    { key: 'Payout', name: '股息支付率', altKeys: ['Payout', '股息支付率'], benchmark: [70, 80], polarity: 'range', goodMin: 70, goodMax: 80 }
+                ],
+                'materials': [
+                    { key: 'Operating Cost', name: '运营成本率', altKeys: ['Operating Cost', '运营成本率'], benchmark: [1.0, 1.5], polarity: 'higher', good: 1.5, bad: 1.0 },
+                    { key: 'Production', name: '产量增长', altKeys: ['Production', 'Revenue Growth', '产量增长'], benchmark: [0, 5], polarity: 'higher', good: 5, bad: 0 },
+                    { key: 'Underlying NPAT', name: '核心净利润', altKeys: ['Underlying NPAT', '核心净利润'], benchmark: [0, 10000], polarity: 'higher', good: 10000, bad: 0 },
+                    { key: 'FCF Yield', name: '现金流收益率', altKeys: ['FCF Yield', '现金流收益率'], benchmark: [8, 15], polarity: 'higher', good: 15, bad: 8 },
+                    { key: 'Net Debt/EBITDA', name: '净杠杆率', altKeys: ['Net Debt/EBITDA', '净杠杆率'], benchmark: [0.5, 1.0], polarity: 'lower', good: 0.5, bad: 1.0 },
+                    { key: 'Dividend Policy', name: '分红政策', altKeys: ['Dividend Policy', '分红政策'], benchmark: [50, 70], polarity: 'higher', good: 70, bad: 50 }
+                ],
+                'infrastructure': [
+                    { key: 'EBITDA Margin', name: '运营利润率', altKeys: ['EBITDA Margin', '运营利润率'], benchmark: [55, 70], polarity: 'higher', good: 70, bad: 55 },
+                    { key: 'Cash Conv', name: '现金转化率', altKeys: ['Cash Conv', '现金转化率'], benchmark: [95, 100], polarity: 'higher', good: 100, bad: 95 },
+                    { key: 'Interest Cover', name: '利息覆盖', altKeys: ['Interest Cover', '利息覆盖率'], benchmark: [3, 5], polarity: 'higher', good: 5, bad: 3 },
+                    { key: 'EV/EBITDA', name: '企业价值倍数', altKeys: ['EV/EBITDA', '企业价值倍数'], benchmark: [12, 15], polarity: 'range', goodMin: 12, goodMax: 15 },
+                    { key: 'Debt/Equity', name: '债务权益比', altKeys: ['Debt/Equity', '债务权益比'], benchmark: [1.5, 2.0], polarity: 'lower', good: 1.5, bad: 2.0 },
+                    { key: 'Current Ratio', name: '流动比率', altKeys: ['Current Ratio', '流动比率'], benchmark: [1.5, 2.0], polarity: 'higher', good: 2.0, bad: 1.5 }
+                ],
+                'healthcare': [
+                    { key: 'EBITDA Margin', name: '运营利润率', altKeys: ['EBITDA Margin', '运营利润率'], benchmark: [25, 35], polarity: 'higher', good: 35, bad: 25 },
+                    { key: 'ROE', name: '净资产收益率', altKeys: ['ROE', '净资产收益率'], benchmark: [15, 20], polarity: 'higher', good: 20, bad: 15 },
+                    { key: 'FCF Yield', name: '现金流收益率', altKeys: ['FCF Yield', '现金流收益率'], benchmark: [2, 5], polarity: 'higher', good: 5, bad: 2 },
+                    { key: 'Net Debt/EBITDA', name: '净杠杆率', altKeys: ['Net Debt/EBITDA', '净杠杆率'], benchmark: [2.0, 2.5], polarity: 'lower', good: 2.0, bad: 2.5 },
+                    { key: 'Dividend Policy', name: '分红政策', altKeys: ['Dividend Policy', '分红政策'], benchmark: [40, 70], polarity: 'range', goodMin: 40, goodMax: 70 },
+                    { key: 'EV/EBITDA', name: '企业价值倍数', altKeys: ['EV/EBITDA', '企业价值倍数'], benchmark: [10, 20], polarity: 'range', goodMin: 10, goodMax: 20 }
+                ],
+                'telecom': [
+                    { key: 'EBITDA Margin', name: '运营利润率', altKeys: ['EBITDA Margin', '运营利润率'], benchmark: [35, 45], polarity: 'higher', good: 45, bad: 35 },
+                    { key: 'FCF Yield', name: '现金流收益率', altKeys: ['FCF Yield', '现金流收益率'], benchmark: [5, 10], polarity: 'higher', good: 10, bad: 5 },
+                    { key: 'Net Debt/EBITDA', name: '净杠杆率', altKeys: ['Net Debt/EBITDA', '净杠杆率'], benchmark: [2.0, 2.5], polarity: 'lower', good: 2.0, bad: 2.5 },
+                    { key: 'Dividend Policy', name: '分红政策', altKeys: ['Dividend Policy', '分红政策'], benchmark: [60, 90], polarity: 'range', goodMin: 60, goodMax: 90 },
+                    { key: 'EV/EBITDA', name: '企业价值倍数', altKeys: ['EV/EBITDA', '企业价值倍数'], benchmark: [6, 10], polarity: 'range', goodMin: 6, goodMax: 10 },
+                    { key: 'Current Ratio', name: '流动比率', altKeys: ['Current Ratio', '流动比率'], benchmark: [0.8, 1.2], polarity: 'higher', good: 1.2, bad: 0.8 }
+                ],
+                'consumer': [
+                    { key: 'EBIT Margin', name: '息税前利润率', altKeys: ['EBIT Margin', '息税前利润率'], benchmark: [4.5, 6], polarity: 'range', goodMin: 4.5, goodMax: 6 },
+                    { key: 'ROE', name: '净资产收益率', altKeys: ['ROE', '净资产收益率'], benchmark: [25, 35], polarity: 'higher', good: 35, bad: 25 },
+                    { key: 'Inventory Days', name: '库存周转天数', altKeys: ['Inventory Days', '库存周转天数'], benchmark: [30, 60], polarity: 'lower', good: 30, bad: 60 },
+                    { key: 'Forward PE', name: '远期市盈率', altKeys: ['Forward PE', '远期市盈率'], benchmark: [20, 24], polarity: 'range', goodMin: 20, goodMax: 24 },
+                    { key: 'Dividend Yield', name: '股息收益率', altKeys: ['Dividend Yield', '股息收益率'], benchmark: [4, 6], polarity: 'higher', good: 6, bad: 4 },
+                    { key: 'Payout', name: '股息支付率', altKeys: ['Payout', '股息支付率'], benchmark: [60, 80], polarity: 'range', goodMin: 60, goodMax: 80 }
+                ]
+            };
+
+            let currentIndustry = 'banks';
+            let portfolioChart = null;
+
+            async function showPeers() {
+                console.log('showPeers called');
+                const modal = document.getElementById('portfolioModal');
+                modal.style.display = 'flex';
+
+                // Get current industry from the dropdown
+                const currentSelectedIndustry = document.getElementById('industrySelect').value;
+                console.log('Current industry:', currentSelectedIndustry);
+
+                try {
+                    const response = await fetch('/api/history');
+                    if (!response.ok) throw new Error('Network error');
+                    const stocks = await response.json();
+                    console.log('Stocks:', stocks.length);
+
+                    if (!stocks || stocks.length === 0) {
+                        document.getElementById('portfolioStats').innerHTML = '<p>No stocks analyzed yet</p>';
+                        return;
+                    }
+
+                    // Group stocks by industry
+                    const industryGroups = {};
+                    stocks.forEach(s => {
+                        const ind = s.industry || 'materials';
+                        if (!industryGroups[ind]) industryGroups[ind] = [];
+                        industryGroups[ind].push(s);
+                    });
+
+                    // Show only current selected industry
+                    const industryLabel = {
+                        'banks': '银行',
+                        'materials': '矿企',
+                        'infrastructure': '基建',
+                        'healthcare': '医疗',
+                        'telecom': '通信',
+                        'consumer': '消费'
+                    };
+
+                    // Update title with current industry
+                    const titleEl = document.querySelector('#portfolioModal .modal-header h2');
+                    if (titleEl) {
+                        titleEl.textContent = `${industryLabel[currentSelectedIndustry] || currentSelectedIndustry} - 同业对比分析`;
+                    }
+
+                    // Hide tabs, show only current industry
+                    const tabsContainer = document.getElementById('industryTabs');
+                    tabsContainer.innerHTML = `<div class="industry-tab active">${industryLabel[currentSelectedIndustry] || currentSelectedIndustry}</div>`;
+
+                    // Show only the selected industry
+                    const targetIndustry = currentSelectedIndustry;
+                    if (industryGroups[targetIndustry] && industryGroups[targetIndustry].length > 0) {
+                        renderRadarChart(industryGroups[targetIndustry], targetIndustry);
+                        renderStockList(industryGroups[targetIndustry], targetIndustry);
+                    } else {
+                        // If no stocks in this industry, show message
+                        document.getElementById('portfolioStats').innerHTML = `<p>暂无${industryLabel[targetIndustry] || targetIndustry}行业数据</p>`;
+                        if (portfolioChart) {
+                            portfolioChart.destroy();
+                            portfolioChart = null;
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('Error loading peers:', error);
+                    document.getElementById('portfolioStats').innerHTML = '<p>加载数据出错</p>';
+                }
+            }
+
+            function renderRadarChart(stocks, industry) {
+                const metrics = industryMetrics[industry] || industryMetrics['banks'];
+
+                // Extract scores for each stock
+                const getScoreValue = (details, metricDef) => {
+                    // Find matching metric using altKeys
+                    const keys = [metricDef.key, ...(metricDef.altKeys || [])];
+                    const found = details.find(d => {
+                        const metricName = d.metric || '';
+                        return keys.some(k => metricName.includes(k));
+                    });
+                    if (!found) return 0;
+
+                    // Parse value - handle formats like "1.93%", "13.64%", "$10349M"
+                    let val = found.value;
+                    if (typeof val === 'string') {
+                        val = parseFloat(val.replace(/[$,%M]/g, ''));
+                    }
+                    return val || 0;
+                };
+
+                // Normalize values to 0-10 scale based on benchmark
+                const normalizeValue = (value, metric) => {
+                    if (value === 0) return 0;
+
+                    const { polarity, good, bad, goodMin, goodMax } = metric;
+
+                    if (polarity === 'higher') {
+                        // Map good->10, bad->0
+                        const ratio = Math.max(0, Math.min(1, (value - bad) / (good - bad)));
+                        return ratio * 10;
+                    } else if (polarity === 'lower') {
+                        // For lower is better: value <= good → 10, value >= bad → 0
+                        // Allow small buffer above bad
+                        const badBuffer = bad * 1.1; // 10% buffer
+                        if (value <= good) return 10;
+                        if (value >= badBuffer) return 0;
+                        const ratio = (badBuffer - value) / (badBuffer - good);
+                        return ratio * 10;
+                    } else if (polarity === 'range') {
+                        // Within range = 10, outside = scaled
+                        if (value >= goodMin && value <= goodMax) return 10;
+                        const dist = Math.min(Math.abs(value - goodMin), Math.abs(value - goodMax));
+                        const range = Math.max(goodMax - goodMin, 1);
+                        return Math.max(0, 10 - (dist / range) * 5);
+                    }
+                    return 5; // default
+                };
+
+                // Build datasets for radar
+                const datasets = stocks.map((stock, idx) => {
+                    const values = metrics.map(m => {
+                        const rawVal = getScoreValue(stock.details, m);
+                        return normalizeValue(rawVal, m);
+                    });
+
+                    return {
+                        label: stock.symbol,
+                        data: values,
+                        backgroundColor: stockColors[idx % stockColors.length].replace('0.7', '0.2'),
+                        borderColor: stockColors[idx % stockColors.length].replace('0.7', '1'),
+                        borderWidth: 2,
+                        pointBackgroundColor: stockColors[idx % stockColors.length].replace('0.7', '1'),
+                        pointBorderColor: '#fff',
+                        pointRadius: 4
+                    };
+                });
+
+                const ctx = document.getElementById('portfolioRadarChart').getContext('2d');
+                if (portfolioChart) portfolioChart.destroy();
+
+                portfolioChart = new Chart(ctx, {
+                    type: 'radar',
+                    data: {
+                        labels: metrics.map(m => m.name),
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            r: {
+                                beginAtZero: true,
+                                max: 10,
+                                ticks: {
+                                    stepSize: 2,
+                                    color: '#888',
+                                    backdropColor: 'transparent'
+                                },
+                                grid: { color: '#333' },
+                                angleLines: { color: '#333' },
+                                pointLabels: {
+                                    color: '#ccc',
+                                    font: { size: 11 }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { color: '#fff', padding: 20 }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const stock = stocks[context.datasetIndex];
+                                        const metric = metrics[context.dataIndex];
+                                        const rawVal = getScoreValue(stock.details, metric.key);
+                                        // Value already includes unit, don't add again
+                                        return `${stock.symbol} - ${metric.name}: ${rawVal}`;
+                                    }
+                                }
+                            }
+                        },
+                        onClick: (e, elements) => {
+                            if (elements.length > 0) {
+                                const stock = stocks[elements[0].datasetIndex];
+                                document.getElementById('symbolInput').value = stock.symbol;
+                                closePortfolio();
+                                analyzeStock();
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderStockList(stocks, industry) {
+                const container = document.getElementById('portfolioStats');
+                const metrics = industryMetrics[industry] || industryMetrics['banks'];
+
+                // Sort by score
+                stocks.sort((a, b) => (b.score?.percentage || 0) - (a.score?.percentage || 0));
+
+                let html = `
+                    <div class="comp-table-container">
+                        <table class="comp-table">
+                            <thead>
+                                <tr>
+                                    <th>股票</th>
+                                    <th>总分</th>
+                                    ${metrics.slice(0, 4).map(m => `<th>${m.name}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+                `;
+
+                stocks.forEach((stock, idx) => {
+                    // Improved getVal that uses altKeys
+                    const getVal = (details, metricDef) => {
+                        const keys = [metricDef.key, ...(metricDef.altKeys || [])];
+                        const found = details.find(d => {
+                            const n = d.metric || '';
+                            return keys.some(k => n.includes(k));
+                        });
+                        // Value already includes unit (like "1.93%"), just return it
+                        return found ? found.value : '-';
+                    };
+
+                    const color = stockColors[idx % stockColors.length].replace('0.7', '1');
+
+                    html += `
+                        <tr style="cursor: pointer;" onclick="document.getElementById('symbolInput').value='${stock.symbol}';closePortfolio();analyzeStock();">
+                            <td style="color: ${color}; font-weight: bold;">${stock.symbol}</td>
+                            <td>${stock.score?.percentage || 0}%</td>
+                            ${metrics.slice(0, 4).map(m => `<td>${getVal(stock.details, m)}</td>`).join('')}
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table></div>';
+                container.innerHTML = html;
+            }
+
+            function closePortfolio() {
+                document.getElementById('portfolioModal').style.display = 'none';
+                if (portfolioChart) {
+                    portfolioChart.destroy();
+                    portfolioChart = null;
+                }
+            }
+
+            function selectStock(symbol) {
+                document.getElementById('symbolInput').value = symbol;
+                closePortfolio();
+                analyzeStock();
+            }
+
+            // Close modal on outside click
+            window.onclick = function(event) {
+                const modal = document.getElementById('portfolioModal');
+                if (event.target == modal) closePortfolio();
+            }
+        </script>
+
+        <div class="history-section">
+            <div class="card-header">
+                <span class="card-title">Recent Analyses</span>
+            </div>
+            <div id="historyGrid" class="history-grid"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadHistory();
+
+            // Enter key to search
+            document.getElementById('symbolInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') analyzeStock();
+            });
+        });
+
+        async function analyzeStock() {
+            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+            const industry = document.getElementById('industrySelect').value;
+            const btn = document.getElementById('analyzeBtn');
+
+            if (!symbol) {
+                showError('Please enter a stock symbol');
+                return;
+            }
+
+            // Show loading
+            btn.disabled = true;
+            btn.classList.add('loading');
+            btn.textContent = 'Analyzing';
+            hideError();
+            document.getElementById('resultsSection').classList.remove('visible');
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, industry })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+                displayResults(data);
+                loadHistory();
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('loading');
+                btn.textContent = 'Analyze';
+            }
+        }
+
+        function displayResults(data) {
+            console.log('displayResults received:', data);
+            document.getElementById('resultsSection').classList.add('visible');
+            document.getElementById('symbolDisplay').textContent = data.symbol;
+
+            // Score
+            const score = data.score.total;
+            const max = data.score.max;
+            const percentage = (score / max) * 100;
+
+            const scoreCircle = document.getElementById('scoreCircle');
+            const scoreNumber = document.getElementById('scoreNumber');
+            const scoreLabel = document.getElementById('scoreLabel');
+            const scoreMax = document.getElementById('scoreMax');
+
+            scoreNumber.textContent = score;
+            scoreMax.textContent = `/ ${max}`;
+
+            // Animate score circle
+            const circumference = 2 * Math.PI * 80;
+            const offset = circumference - (score / max) * circumference;
+            setTimeout(() => {
+                scoreCircle.style.strokeDashoffset = offset;
+            }, 100);
+
+            // Color based on score
+            let colorClass = 'low';
+            let label = 'Needs Review';
+            if (percentage >= 70) {
+                colorClass = 'high';
+                label = 'Strong Buy';
+            } else if (percentage >= 50) {
+                colorClass = 'medium';
+                label = 'Hold';
+            }
+
+            scoreCircle.className = `score-circle-fill ${colorClass}`;
+            scoreNumber.className = `score-number ${colorClass}`;
+            scoreLabel.className = `score-label ${colorClass}`;
+            scoreLabel.textContent = label;
+
+            // Radar Chart
+            updateRadarChart(data.details);
+
+            // Metrics
+            const metricsGrid = document.getElementById('metricsGrid');
+            metricsGrid.innerHTML = data.details.map(d => {
+                const pct = (d.score / d.max) * 100;
+                let barClass = 'low';
+                if (pct >= 70) barClass = 'high';
+                else if (pct >= 40) barClass = 'medium';
+
+                return `
+                    <div class="metric-item">
+                        <div class="metric-name">${d.metric}</div>
+                        <div class="metric-value">${d.value !== null ? d.value : 'N/A'}</div>
+                        <div class="metric-bar">
+                            <div class="metric-bar-fill ${barClass}" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Checks
+            const checksList = document.getElementById('checksList');
+            checksList.innerHTML = '';
+
+            data.passed_checks.forEach(check => {
+                checksList.innerHTML += `
+                    <div class="check-item passed">
+                        <span class="check-icon">✓</span>
+                        <span>${check}</span>
+                    </div>
+                `;
+            });
+
+            data.failed_checks.forEach(check => {
+                checksList.innerHTML += `
+                    <div class="check-item failed">
+                        <span class="check-icon">✗</span>
+                        <span>${check}</span>
+                    </div>
+                `;
+            });
+
+            if (data.passed_checks.length === 0 && data.failed_checks.length === 0) {
+                checksList.innerHTML = '<div class="check-item">No checks available</div>';
+            }
+        }
+
+        let radarChart = null;
+
+        function updateRadarChart(details) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+
+            const labels = details.map(d => d.metric);
+            const scores = details.map(d => (d.score / d.max) * 100);
+
+            if (radarChart) {
+                radarChart.destroy();
+            }
+
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Score',
+                        data: scores,
+                        backgroundColor: 'rgba(0, 212, 170, 0.2)',
+                        borderColor: 'rgba(0, 212, 170, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(0, 212, 170, 1)',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20,
+                                color: '#555566',
+                                backdropColor: 'transparent',
+                                font: {
+                                    family: "'JetBrains Mono', monospace",
+                                    size: 10
+                                }
+                            },
+                            grid: {
+                                color: '#2a2a3a'
+                            },
+                            angleLines: {
+                                color: '#2a2a3a'
+                            },
+                            pointLabels: {
+                                color: '#8888a0',
+                                font: {
+                                    family: "'Outfit', sans-serif",
+                                    size: 11,
+                                    weight: 500
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const history = await response.json();
+
+                const historyGrid = document.getElementById('historyGrid');
+
+                if (history.length === 0) {
+                    historyGrid.innerHTML = '<p style="color: var(--text-muted); grid-column: 1/-1; text-align: center;">No analyses yet</p>';
+                    return;
+                }
+
+                // Group by symbol
+                const grouped = {};
+                history.forEach(h => {
+                    if (!grouped[h.symbol]) {
+                        grouped[h.symbol] = h;
+                    }
+                });
+
+                historyGrid.innerHTML = Object.values(grouped).slice(0, 8).map(h => `
+                    <div class="history-item" onclick="loadFromHistory('${h.symbol}')">
+                        <div class="history-symbol">${h.symbol}</div>
+                        <div class="history-date">${h.timestamp.substring(0, 8)}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load history:', e);
+            }
+        }
+
+        function loadFromHistory(symbol) {
+            document.getElementById('symbolInput').value = symbol;
+            analyzeStock();
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

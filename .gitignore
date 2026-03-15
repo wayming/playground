@@ -16,3 +16,7 @@ backtesting/test/*
 backtesting/*.log
 backtesting/backtesting/__pycache__/*
 backtesting/test*
+divident_screening/claude_config/.claude/settings.json
+divident_screening/__pycache__/*
+divident_screening/claude_config/*
+divident_screening/dev.code-workspace

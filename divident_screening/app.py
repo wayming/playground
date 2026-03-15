@@ -1,0 +1,180 @@
+from flask import Flask, render_template, request, jsonify, send_from_directory
+import json
+import os
+import glob
+from datetime import datetime
+import uuid
+
+app = Flask(__name__)
+
+# Ensure data directories exist
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+os.makedirs(DATA_DIR, exist_ok=True)
+os.makedirs(os.path.join(DATA_DIR, 'raw'), exist_ok=True)
+os.makedirs(os.path.join(DATA_DIR, 'json'), exist_ok=True)
+
+# Import our scraper and scorer
+from asx_scraper import scrape_stock
+from asx_scorer import ScoringSystem
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/api/analyze', methods=['POST'])
+def analyze():
+    data = request.get_json()
+    symbol = data.get('symbol', '').upper().strip()
+    industry = data.get('industry', 'materials')
+
+    if not symbol:
+        return jsonify({'error': 'Please enter a stock symbol'}), 400
+
+    # Create unique ID for this analysis
+    analysis_id = str(uuid.uuid4())[:8]
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+
+    try:
+        # Check if data already exists (use latest json file)
+        existing_files = glob.glob(os.path.join(DATA_DIR, 'json', f'{symbol}_*.json'))
+        json_data = None
+        if existing_files:
+            # Use latest existing data
+            latest_file = sorted(existing_files)[-1]
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                json_data = json.load(f)
+            print(f"Using cached data for {symbol}: {latest_file}")
+        else:
+            # Scrape new data
+            json_data = scrape_stock(symbol)
+
+        if not json_data or not json_data.get('income_statement'):
+            return jsonify({'error': f'Could not find data for {symbol}. Make sure it\'s a valid ASX stock.'}), 404
+
+        # Only save if we scraped new data (not from cache)
+        is_cached = bool(existing_files)
+        if not is_cached:
+            # Save raw JSON data
+            raw_file = os.path.join(DATA_DIR, 'raw', f'{symbol}_{timestamp}_{analysis_id}.json')
+            with open(raw_file, 'w', encoding='utf-8') as f:
+                json.dump(json_data, f, indent=2)
+
+            # Save JSON data
+            json_file = os.path.join(DATA_DIR, 'json', f'{symbol}_{timestamp}_{analysis_id}.json')
+            with open(json_file, 'w', encoding='utf-8') as f:
+                json.dump(json_data, f, indent=2)
+        else:
+            # Use existing json file path
+            json_file = sorted(existing_files)[-1]
+            raw_file = None
+
+        # Score the stock
+        scorer = ScoringSystem(json_data)
+        score_result = scorer.score(industry)
+
+        # Prepare response
+        response = {
+            'symbol': symbol,
+            'industry': industry,
+            'analysis_id': analysis_id,
+            'timestamp': timestamp,
+            'score': {
+                'total': round(score_result.total_score, 1),
+                'max': score_result.max_score,
+                'percentage': round(score_result.total_score / score_result.max_score * 100, 1) if score_result.max_score > 0 else 0
+            },
+            'details': score_result.details,
+            'passed_checks': score_result.passed_checks,
+            'failed_checks': score_result.failed_checks,
+            'ratios': {k: v for k, v in json_data.get('ratios', {}).items()
+                      if isinstance(v, dict) and 'Current' in v},
+            'raw_file': raw_file,
+            'json_file': json_file
+        }
+
+        return jsonify(response)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/history')
+def history():
+    """List all previously analyzed stocks with scores - 优化版本，缓存分数"""
+    json_dir = os.path.join(DATA_DIR, 'json')
+    files = sorted(os.listdir(json_dir), reverse=True) if os.path.exists(json_dir) else []
+
+    # Group by symbol, keep latest
+    latest = {}
+    for f in files:
+        if f.endswith('.json'):
+            # 修复文件名解析 - 处理 CBA_20260314_073143_839079f8.json 格式
+            parts = f.rsplit('_', 3)
+            if len(parts) >= 4:
+                symbol = parts[0]
+                if symbol not in latest:
+                    latest[symbol] = f
+
+    # For each stock, read the JSON and compute score
+    result = []
+    for symbol, f in latest.items():
+        try:
+            with open(os.path.join(json_dir, f), 'r') as fp:
+                data = json.load(fp)
+            # Auto-detect industry
+            industry = detect_industry(symbol)
+            scorer = ScoringSystem(data)
+            score_result = scorer.score(industry)
+            result.append({
+                'symbol': symbol,
+                'industry': industry,
+                'score': {
+                    'total': round(score_result.total_score, 1),
+                    'max': score_result.max_score,
+                    'percentage': round(score_result.total_score / score_result.max_score * 100, 1) if score_result.max_score > 0 else 0
+                },
+                'details': score_result.details,
+                'timestamp': f.split('_')[1] if len(f.split('_')) > 1 else 'unknown'
+            })
+        except Exception as e:
+            print(f"Error processing {symbol}: {e}")
+
+    return jsonify(result)
+
+
+def detect_industry(symbol):
+    """Auto-detect industry based on common ASX stocks"""
+    banks = ['CBA', 'NAB', 'ANZ', 'WBC', 'MQG', 'BOQ', 'BEN', 'SUN', 'ZUR']  # 添加更多银行
+    materials = ['BHP', 'RIO', 'FMG', 'WSA', 'NCM', 'S32', 'LYC', 'AWC']
+    infrastructure = ['APA', 'WDS', 'SCG', 'AST', 'CTD', 'DJI']
+    healthcare = ['CSL', 'RHC', 'SHL', 'MSB', 'APE', 'FDV']
+    telecom = ['TLS', 'TPG', 'HUB', 'DCN']
+
+    # 清理 symbol - 移除 .AX 后缀和可能的路径
+    symbol = symbol.upper().replace('.AX', '')
+    # 如果包含下划线（来自文件名解析），只取第一部分
+    if '_' in symbol:
+        symbol = symbol.split('_')[0]
+
+    if symbol in banks:
+        return 'banks'
+    elif symbol in materials:
+        return 'materials'
+    elif symbol in infrastructure:
+        return 'infrastructure'
+    elif symbol in healthcare:
+        return 'healthcare'
+    elif symbol in telecom:
+        return 'telecom'
+    else:
+        return 'materials'  # default
+
+@app.route('/data/json/<path:filename>')
+def serve_json(filename):
+    return send_from_directory(os.path.join(DATA_DIR, 'json'), filename)
+
+@app.route('/data/raw/<path:filename>')
+def serve_raw(filename):
+    return send_from_directory(os.path.join(DATA_DIR, 'raw'), filename)
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)

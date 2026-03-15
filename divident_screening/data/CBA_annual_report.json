@@ -1,0 +1,17 @@
+{
+  "ticker": "CBA.AX",
+  "sources_tried": [],
+  "manual_template": {
+    "note": "Fill in these fields from annual report PDF",
+    "fields": [
+      "Total Interest Earning Assets",
+      "Home Loans",
+      "Consumer Finance",
+      "Business and Corporate Loans",
+      "Non-Lending Interest Earning Assets",
+      "Total Assets",
+      "Total Liabilities",
+      "Shareholders Equity"
+    ]
+  }
+}
