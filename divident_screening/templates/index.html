@@ -566,17 +566,9 @@
         <div class="search-section">
             <div class="input-group">
                 <input type="text" id="symbolInput" placeholder="Enter symbol (e.g., FMG)" maxlength="10">
-                <select id="industrySelect">
-                    <option value="materials">Materials (Mining)</option>
-                    <option value="banks">Financial (Banks)</option>
-                    <option value="infrastructure">Infrastructure</option>
-                    <option value="consumer">Consumer Staples</option>
-                    <option value="healthcare">Healthcare</option>
-                    <option value="telecom">Telecom</option>
-                </select>
             </div>
             <button class="btn-analyze" id="analyzeBtn" onclick="analyzeStock()">Analyze</button>
-            <button class="btn-portfolio" onclick="showPeers()">同业对比</button>
+            <button class="btn-portfolio" onclick="showPeers()">Peer Comparison</button>
         </div>
 
         <div id="resultsSection" class="results-section">
@@ -636,7 +628,7 @@
         <div id="portfolioModal" class="modal" style="display: none;" onclick="if(event.target === this) closePortfolio()">
             <div class="modal-content" style="max-width: 1200px;">
                 <div class="modal-header">
-                    <h2>同业对比分析</h2>
+                    <h2>Peer Comparison</h2>
                     <span class="close" onclick="closePortfolio()">&times;</span>
                 </div>
                 <div class="modal-body">
@@ -886,18 +878,18 @@
                 const modal = document.getElementById('portfolioModal');
                 modal.style.display = 'flex';
 
-                // Get current industry from the dropdown
-                const currentSelectedIndustry = document.getElementById('industrySelect').value;
-                console.log('Current industry:', currentSelectedIndustry);
+                // Show loading state
+                document.getElementById('portfolioStats').innerHTML = '<p>Loading...</p>';
 
                 try {
                     const response = await fetch('/api/history');
+                    console.log('Response status:', response.status);
                     if (!response.ok) throw new Error('Network error');
                     const stocks = await response.json();
-                    console.log('Stocks:', stocks.length);
+                    console.log('Stocks:', stocks);
 
                     if (!stocks || stocks.length === 0) {
-                        document.getElementById('portfolioStats').innerHTML = '<p>No stocks analyzed yet</p>';
+                        document.getElementById('portfolioStats').innerHTML = '<p>No stocks analyzed yet. Analyze some stocks first!</p>';
                         return;
                     }
 
@@ -905,42 +897,53 @@
                     const industryGroups = {};
                     stocks.forEach(s => {
                         const ind = s.industry || 'materials';
+                        console.log('Stock:', s.symbol, 'Industry:', ind);
                         if (!industryGroups[ind]) industryGroups[ind] = [];
                         industryGroups[ind].push(s);
                     });
+                    console.log('Industry groups:', industryGroups);
 
-                    // Show only current selected industry
                     const industryLabel = {
-                        'banks': '银行',
-                        'materials': '矿企',
-                        'infrastructure': '基建',
-                        'healthcare': '医疗',
-                        'telecom': '通信',
-                        'consumer': '消费'
+                        'banks': 'Banks',
+                        'materials': 'Materials',
+                        'infrastructure': 'Infrastructure',
+                        'healthcare': 'Healthcare',
+                        'telecom': 'Telecom',
+                        'consumer_staples': 'Consumer'
                     };
 
-                    // Update title with current industry
-                    const titleEl = document.querySelector('#portfolioModal .modal-header h2');
-                    if (titleEl) {
-                        titleEl.textContent = `${industryLabel[currentSelectedIndustry] || currentSelectedIndustry} - 同业对比分析`;
+                    // Show all industries as tabs
+                    const tabsContainer = document.getElementById('industryTabs');
+                    const industries = Object.keys(industryGroups);
+
+                    if (industries.length === 0) {
+                        document.getElementById('portfolioStats').innerHTML = '<p>No stocks analyzed yet</p>';
+                        return;
                     }
 
-                    // Hide tabs, show only current industry
-                    const tabsContainer = document.getElementById('industryTabs');
-                    tabsContainer.innerHTML = `<div class="industry-tab active">${industryLabel[currentSelectedIndustry] || currentSelectedIndustry}</div>`;
+                    // Create industry tabs
+                    tabsContainer.innerHTML = industries.map((ind, idx) =>
+                        `<div class="industry-tab ${idx === 0 ? 'active' : ''}" data-industry="${ind}">${industryLabel[ind] || ind}</div>`
+                    ).join('');
 
-                    // Show only the selected industry
-                    const targetIndustry = currentSelectedIndustry;
-                    if (industryGroups[targetIndustry] && industryGroups[targetIndustry].length > 0) {
-                        renderRadarChart(industryGroups[targetIndustry], targetIndustry);
-                        renderStockList(industryGroups[targetIndustry], targetIndustry);
-                    } else {
-                        // If no stocks in this industry, show message
-                        document.getElementById('portfolioStats').innerHTML = `<p>暂无${industryLabel[targetIndustry] || targetIndustry}行业数据</p>`;
-                        if (portfolioChart) {
-                            portfolioChart.destroy();
-                            portfolioChart = null;
-                        }
+                    // Tab click handlers
+                    tabsContainer.querySelectorAll('.industry-tab').forEach(tab => {
+                        tab.addEventListener('click', function() {
+                            tabsContainer.querySelectorAll('.industry-tab').forEach(t => t.classList.remove('active'));
+                            this.classList.add('active');
+                            const targetIndustry = this.dataset.industry;
+                            if (industryGroups[targetIndustry]) {
+                                renderRadarChart(industryGroups[targetIndustry], targetIndustry);
+                                renderStockList(industryGroups[targetIndustry], targetIndustry);
+                            }
+                        });
+                    });
+
+                    // Show first industry by default
+                    const firstIndustry = industries[0];
+                    if (industryGroups[firstIndustry]) {
+                        renderRadarChart(industryGroups[firstIndustry], firstIndustry);
+                        renderStockList(industryGroups[firstIndustry], firstIndustry);
                     }
 
                 } catch (error) {
@@ -1089,7 +1092,7 @@
                                 <tr>
                                     <th>股票</th>
                                     <th>总分</th>
-                                    ${metrics.slice(0, 4).map(m => `<th>${m.name}</th>`).join('')}
+                                    ${metrics.slice(0, 6).map(m => `<th>${m.name}</th>`).join('')}
                                 </tr>
                             </thead>
                             <tbody>
@@ -1113,7 +1116,7 @@
                         <tr style="cursor: pointer;" onclick="document.getElementById('symbolInput').value='${stock.symbol}';closePortfolio();analyzeStock();">
                             <td style="color: ${color}; font-weight: bold;">${stock.symbol}</td>
                             <td>${stock.score?.percentage || 0}%</td>
-                            ${metrics.slice(0, 4).map(m => `<td>${getVal(stock.details, m)}</td>`).join('')}
+                            ${metrics.slice(0, 6).map(m => `<td>${getVal(stock.details, m)}</td>`).join('')}
                         </tr>
                     `;
                 });
@@ -1165,7 +1168,6 @@
 
         async function analyzeStock() {
             const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
-            const industry = document.getElementById('industrySelect').value;
             const btn = document.getElementById('analyzeBtn');
 
             if (!symbol) {
@@ -1180,11 +1182,14 @@
             hideError();
             document.getElementById('resultsSection').classList.remove('visible');
 
+            // Industry is automatically detected from stockanalysis.com
+            const requestBody = { symbol };
+
             try {
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ symbol, industry })
+                    body: JSON.stringify(requestBody)
                 });
 
                 const data = await response.json();

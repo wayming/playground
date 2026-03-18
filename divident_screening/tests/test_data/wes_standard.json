@@ -1,0 +1,114 @@
+{
+  "ticker": "WES.AX",
+  "industry": "Consumer Staples",
+  "source": "test_data",
+  "description": "Standard test data for WES (Wesfarmers) consumer staples company based on score_system.md",
+  "income_statement": {
+    "Revenue": {
+      "TTM": 46422.0,
+      "FY 2025": 45700.0
+    },
+    "Cost of Revenue": {
+      "TTM": 30796.0,
+      "FY 2025": 30258.0
+    },
+    "EBIT": {
+      "TTM": 4073.0,
+      "FY 2025": 3946.0
+    },
+    "EBITDA": {
+      "TTM": 4662.0,
+      "FY 2025": 4536.0
+    },
+    "Net Income": {
+      "TTM": 3062.0,
+      "FY 2025": 2926.0
+    },
+    "Net Income to Common": {
+      "TTM": 3062.0,
+      "FY 2025": 2926.0
+    }
+  },
+  "balance_sheet": {
+    "Inventory": {
+      "TTM": 6771.0,
+      "FY 2025": 6038.0
+    },
+    "Shareholders Equity": {
+      "TTM": 7856.0,
+      "FY 2025": 7856.0
+    }
+  },
+  "ratios": {
+    "EBIT Margin": {
+      "TTM": 8.77,
+      "FY 2025": 8.63
+    },
+    "Return on Equity (ROE)": {
+      "TTM": 38.98,
+      "FY 2025": 37.25
+    },
+    "Forward PE": {
+      "Current": 28.52,
+      "FY 2025": 34.17
+    },
+    "Dividend Yield": {
+      "Current": 2.74,
+      "FY 2025": 2.54
+    },
+    "Payout Ratio": {
+      "Current": 75.0,
+      "FY 2025": 78.0
+    },
+    "Market Share Change": {
+      "TTM": 3.15,
+      "FY 2025": 3.42
+    },
+    "Franking Credits": {
+      "TTM": 100,
+      "FY 2025": 100
+    }
+  },
+  "expected_results": {
+    "EBIT Margin": {
+      "expected": 8.77,
+      "formula": "EBIT / Revenue",
+      "calculation": "4073 / 46422 * 100 = 8.77%"
+    },
+    "ROE": {
+      "expected": 38.98,
+      "formula": "Net Income / Shareholders' Equity",
+      "calculation": "3062 / 7856 * 100 = 38.98%"
+    },
+    "Inventory Days": {
+      "expected": 80.26,
+      "formula": "(Inventory / Cost of Revenue) * 365",
+      "calculation": "(6771 / 30796) * 365 = 80.26 days"
+    },
+    "Forward PE": {
+      "expected": 28.52,
+      "formula": "Current Market Price / Next Year's EPS",
+      "source": "directly from ratios"
+    },
+    "Dividend Yield": {
+      "expected": 2.74,
+      "formula": "Dividend / Market Price",
+      "source": "directly from ratios"
+    },
+    "Payout Ratio": {
+      "expected": 75.0,
+      "formula": "Dividends / Net Income",
+      "source": "directly from ratios"
+    },
+    "Market Share Change": {
+      "expected": 3.15,
+      "formula": "Revenue Growth as proxy for market share trend",
+      "source": "derived from revenue growth"
+    },
+    "Franking Credits": {
+      "expected": 100,
+      "formula": "Australian full franking credits",
+      "source": "standard for Australian companies"
+    }
+  }
+}

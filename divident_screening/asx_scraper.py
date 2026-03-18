@@ -9,8 +9,17 @@ from bs4 import BeautifulSoup
 import json
 import re
 import sys
+import os
 import argparse
 from typing import Dict, Any, Optional
+
+# 导入 DeepSeek 数据补充模块
+try:
+    from deepseek_filler import fill_missing_data
+    HAS_DEEPSEEK = True
+except ImportError:
+    HAS_DEEPSEEK = False
+    print("Warning: deepseek_filler not available, skipping AI data fill")
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -152,6 +161,29 @@ def clean_value(value: str) -> Any:
         return value
 
 
+def parse_industry(soup: BeautifulSoup) -> Dict[str, str]:
+    """解析股票主页面获取行业和板块信息"""
+    industry_info = {'industry': None, 'sector': None}
+
+    # 查找包含 "Industry" 的元素
+    # stockanalysis.com 页面结构中，行业信息在特定的链接文本中
+    links = soup.find_all('a', href=True)
+
+    for link in links:
+        href = link.get('href', '')
+        text = link.get_text(strip=True)
+
+        # 查找 Industry 链接
+        if '/stocks/industry/' in href and text:
+            industry_info['industry'] = text
+
+        # 查找 Sector 链接
+        if '/stocks/sector/' in href and text:
+            industry_info['sector'] = text
+
+    return industry_info
+
+
 def scrape_stock(ticker: str) -> Dict[str, Any]:
     """抓取单个股票的所有财务数据"""
     ticker = ticker.upper().replace('.AX', '')
@@ -160,11 +192,18 @@ def scrape_stock(ticker: str) -> Dict[str, Any]:
     result = {
         'ticker': f"{ticker}.AX",
         'source': 'stockanalysis.com',
+        'industry': {},
         'income_statement': {},
         'balance_sheet': {},
         'cash_flow': {},
         'ratios': {}
     }
+
+    # 0. 股票主页面 - 获取行业信息
+    url = f"{BASE_URL}/{url_ticker}/"
+    soup = fetch_page(url)
+    if soup:
+        result['industry'] = parse_industry(soup)
 
     # 1. 损益表
     url = f"{BASE_URL}/{url_ticker}/financials/"
@@ -190,7 +229,38 @@ def scrape_stock(ticker: str) -> Dict[str, Any]:
     if soup:
         result['ratios'] = parse_ratio_table(soup)
 
+    # 5. 尝试使用 DeepSeek API 补充缺失数据
+    if HAS_DEEPSEEK and os.environ.get('DEEPSEEK_API_KEY'):
+        industry_info = result.get('industry', {})
+        industry_name = industry_info.get('industry', '')
+        sector = industry_info.get('sector', '')
+
+        # 根据行业名称映射到内部类型
+        internal_industry = map_industry_for_filler(industry_name, sector)
+        if internal_industry:
+            result = fill_missing_data(result, internal_industry)
+
     return result
+
+
+def map_industry_for_filler(industry_name: str, sector: str) -> Optional[str]:
+    """将行业名称映射到内部行业类型 (用于 DeepSeek 数据补充)"""
+    text = f"{industry_name} {sector}".lower()
+
+    if any(kw in text for kw in ['bank', 'financial']):
+        return 'banks'
+    if any(kw in text for kw in ['basic materials', 'metal', 'mining', 'gold', 'coal', 'material']):
+        return 'materials'
+    if any(kw in text for kw in ['utilities', 'energy', 'oil', 'gas', 'infrastructure']):
+        return 'infrastructure'
+    if any(kw in text for kw in ['healthcare', 'biotechnology', 'pharmaceutical', 'medical']):
+        return 'healthcare'
+    if any(kw in text for kw in ['telecom', 'communication']):
+        return 'telecom'
+    if 'consumer' in text:
+        return 'consumer_staples'
+
+    return None
 
 
 def main():
@@ -198,10 +268,21 @@ def main():
     parser.add_argument('ticker', help='股票代码 (如 FMG)')
     parser.add_argument('-o', '--output', help='输出文件路径 (JSON格式)')
     parser.add_argument('-p', '--pretty', action='store_true', help='格式化输出JSON')
+    parser.add_argument('--no-ai', action='store_true', help='禁用 DeepSeek AI 数据补充')
 
     args = parser.parse_args()
 
+    # 如果设置了 --no-ai，临时禁用 AI
+    if args.no_ai:
+        global HAS_DEEPSEEK
+        HAS_DEEPSEEK = False
+
     print(f"抓取 {args.ticker} 的财务数据...")
+    if HAS_DEEPSEEK and os.environ.get('DEEPSEEK_API_KEY'):
+        print("DeepSeek AI 数据补充: 启用")
+    else:
+        print("DeepSeek AI 数据补充: 禁用 (需要设置 DEEPSEEK_API_KEY)")
+
     data = scrape_stock(args.ticker)
 
     # 输出
@@ -217,6 +298,10 @@ def main():
 
     # 打印摘要
     print(f"\n摘要:")
+    industry_info = data.get('industry', {})
+    if industry_info.get('industry'):
+        print(f"  - 行业: {industry_info['industry']}")
+        print(f"  - 板块: {industry_info['sector']}")
     print(f"  - 损益表指标: {len(data.get('income_statement', {}))}")
     print(f"  - 资产负债表指标: {len(data.get('balance_sheet', {}))}")
     print(f"  - 现金流表指标: {len(data.get('cash_flow', {}))}")

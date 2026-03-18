@@ -20,3 +20,6 @@ divident_screening/claude_config/.claude/settings.json
 divident_screening/__pycache__/*
 divident_screening/claude_config/*
 divident_screening/dev.code-workspace
+divident_screening/.claude
+divident_screening/tests/__pycache__/*
+divident_screening/scorers/__pycache__/*

@@ -1,0 +1,103 @@
+{
+  "ticker": "CBA.AX",
+  "industry": "Banks",
+  "source": "test_data",
+  "description": "Standard test data for CBA bank based on score_system.md",
+  "income_statement": {
+    "Net Interest Income": {
+      "FY 2025": 24023.0
+    },
+    "Total Non-Interest Expense": {
+      "FY 2025": 12996.0
+    },
+    "Revenues Before Loan Losses": {
+      "FY 2025": 28290.0
+    },
+    "Return on Equity (ROE)": {
+      "FY 2025": 12.84
+    },
+    "Provision for Loan Losses": {
+      "FY 2025": 726.0
+    },
+    "Net Income to Common": {
+      "FY 2025": 10116.0
+    },
+    "Dividend Per Share": {
+      "FY 2025": 4.85
+    },
+    "Basic Shares Outstanding": {
+      "FY 2025": 1672.0
+    }
+  },
+  "balance_sheet": {
+    "Cash & Equivalents": {
+      "FY 2025": 54381.0
+    },
+    "Investment Securities": {
+      "FY 2025": 186794.0
+    },
+    "Trading Asset Securities": {
+      "FY 2025": 71570.0
+    },
+    "Gross Loans": {
+      "FY 2025": 1015883.0
+    },
+    "Net Loans": {
+      "FY 2025": 1009738.0
+    },
+    "Total Common Equity": {
+      "FY 2025": 78776.0
+    },
+    "Total Assets": {
+      "FY 2025": 1342015.0
+    }
+  },
+  "ratios": {
+    "Return on Equity (ROE)": {
+      "FY 2025": 12.84
+    },
+    "Payout Ratio": {
+      "FY 2025": 80.16
+    }
+  },
+  "expected_results": {
+    "NIM": {
+      "expected": 1.81,
+      "formula": "Net Interest Income / (Gross Loans + Total Investments + Cash)",
+      "calculation": "24023 / (1015883 + 258997 + 54381) * 100 = 1.81%",
+      "components": {
+        "Net Interest Income": 24023,
+        "Gross Loans": 1015883,
+        "Total Investments": 258997,
+        "Cash": 54381,
+        "IEA": 1329261
+      }
+    },
+    "CET1": {
+      "expected": 5.87,
+      "formula": "Total Common Equity / Total Assets",
+      "calculation": "78776 / 1342015 * 100 = 5.87%",
+      "note": "Using equity/assets as proxy since RWA not available"
+    },
+    "Cost-to-Income": {
+      "expected": 45.94,
+      "formula": "Total Non-Interest Expense / Revenues Before Loan Losses",
+      "calculation": "12996 / 28290 * 100 = 45.94%"
+    },
+    "ROE": {
+      "expected": 12.84,
+      "formula": "Net Income to Common / Total Common Equity",
+      "source": "directly from ratios"
+    },
+    "Bad Debt": {
+      "expected": 0.071,
+      "formula": "Provision for Loan Losses / Gross Loans",
+      "calculation": "726 / 1015883 * 100 = 0.071%"
+    },
+    "Payout Ratio": {
+      "expected": 80.16,
+      "formula": "(Dividend Per Share * Basic Shares Outstanding) / Net Income to Common",
+      "calculation": "(4.85 * 1672) / 10116 * 100 = 80.16%"
+    }
+  }
+}

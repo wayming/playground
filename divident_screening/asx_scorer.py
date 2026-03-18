@@ -6,8 +6,75 @@ ASX Stock Scoring System - 12刀打分体系
 
 import json
 import argparse
+import logging
+import pprint
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
+
+# Setup logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='[%(levelname)s] %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+# ============== Normalization Functions ==============
+
+def normalize_positive(value: float, warn: float, target: float) -> float:
+    """
+    正向指标评分函数 (越大越好).
+
+    得分 = (实际值 - 预警值) / (目标值 - 预警值) × 10
+    - 超过目标值 → 10 分
+    - 低于预警值 → 0 分
+    """
+    if value >= target:
+        return 10.0
+    if value <= warn:
+        return 0.0
+    return (value - warn) / (target - warn) * 10
+
+
+def normalize_negative(value: float, warn: float, target: float) -> float:
+    """
+    逆向指标评分函数 (越小越好).
+
+    得分 = (预警值 - 实际值) / (预警值 - 目标值) × 10
+    - 低于目标值 → 10 分
+    - 超过预警值 → 0 分
+    """
+    if value <= target:
+        return 10.0
+    if value >= warn:
+        return 0.0
+    return (warn - value) / (warn - target) * 10
+
+
+def normalize_range(value: float, warn_low: float, target_low: float,
+                   target_high: float, warn_high: float) -> float:
+    """
+    趋中指标评分函数 (中间最优).
+
+    目标值区间内 → 10 分
+    预警边界 → 0 分
+    """
+    # 如果在目标区间内，得满分
+    if target_low <= value <= target_high:
+        return 10.0
+    # 如果低于低预警线
+    if value <= warn_low:
+        return 0.0
+    # 如果高于高预警线
+    if value >= warn_high:
+        return 0.0
+    # 在低预警线和目标低值之间
+    if value < target_low:
+        return (value - warn_low) / (target_low - warn_low) * 10
+    # 在目标高值和高预警线之间
+    if value > target_high:
+        return (warn_high - value) / (warn_high - target_high) * 10
+    return 0.0
 
 
 @dataclass
@@ -24,7 +91,7 @@ class ScoreResult:
     def log(self, message: str):
         """添加调试日志"""
         self.debug_logs.append(f"[{self.ticker}] {message}")
-        print(f"[DEBUG] {self.ticker}: {message}")
+        logger.debug(f"{self.ticker}: {message}")
 
 
 class ScoringSystem:
@@ -131,17 +198,24 @@ class ScoringSystem:
 
         # ===== 2. CET1 Ratio (一级资本充足率) - >11.5% =====
         # 公式: CET1 Ratio = Common Equity Tier 1 Capital / Risk Weighted Assets
-        # 由于数据中可能没有RWA，使用 Total Common Equity / Total Assets 作为代理 (>5%)
         cet1 = self._get_value('CET1 Ratio', 'Common Equity Tier 1 Ratio')
         result.log(f"CET1 - Direct value: {cet1}")
 
-        # 尝试通过 Total Common Equity / Total Assets 计算
+        # 尝试通过 RWA 计算 (优先使用 AI 补充的 RWA 数据)
+        if not cet1:
+            common_equity = self._get_value('Total Common Equity', 'Shareholders Equity')
+            rwa = self._get_value('Risk Weighted Assets')
+            if common_equity and rwa and rwa > 0:
+                cet1 = (common_equity / rwa) * 100
+                result.log(f"CET1 - Calculated via Equity/RWA: {cet1:.2f}%")
+
+        # Fallback: 通过 Total Common Equity / Total Assets 计算 (代理 >5%)
         if not cet1:
             common_equity = self._get_value('Total Common Equity', 'Shareholders Equity')
             total_assets = self._get_value('Total Assets')
             if common_equity and total_assets and total_assets > 0:
                 cet1 = (common_equity / total_assets) * 100
-                result.log(f"CET1 - Calculated via Equity/Assets: {cet1:.2f}%")
+                result.log(f"CET1 - Calculated via Equity/Assets (proxy): {cet1:.2f}%")
 
         if cet1:
             score = min(1, cet1 / 11.5) * 10
@@ -246,239 +320,350 @@ class ScoringSystem:
         return result
 
     def score_materials(self) -> ScoreResult:
-        """矿企六维度量化模型 - 根据 score_system.md 重构"""
+        """矿企六维度量化模型 - 根据 score_normalisation.md 标准化评分
+
+        根据设计文档:
+        - AISC (运营成本率): 逆向, warn=85%, target=60%, 权重=25%
+        - CIP (在建工程增速): 正向, warn=0%, target=30%, 权重=15%
+        - Underlying NPAT: 正向, warn=减值>20%, target=无减值, 权重=15%
+        - FCF Yield: 正向, warn=0%, target=8%, 权重=20%
+        - Net Debt/EBITDA: 逆向, warn=1.5x, target=0.5x, 权重=15%
+        - Dividend Payout: 正向, warn=40%, target=60%, 权重=10%
+        """
         result = ScoreResult(ticker=self.ticker, industry="Materials")
 
-        # ===== 1. Operating Cost Ratio (运营成本率) - 替代AISC =====
-        # 公式: Operating Cost Ratio = Revenue / (Cost of Revenue + Sustaining Capex)
+        # ===== 1. AISC (运营成本率) - 逆向指标 =====
+        # 预警线: 85%, 目标值: 60%, 权重: 25%
         revenue = self._get_value('Revenue', 'Total Revenue')
         cost_revenue = self._get_value('Cost of Revenue', 'Cost of Goods Sold')
         capex = self._get_value('Capital Expenditures', 'CapEx', 'Sustaining Capex')
-        result.log(f"Materials - Revenue: {revenue}, Cost: {cost_revenue}, Capex: {capex}")
 
-        if revenue and cost_revenue and capex:
-            # 运营成本率越低越好
-            operating_cost_ratio = revenue / (cost_revenue + capex) if (cost_revenue + capex) > 0 else 0
-            # 比率应该越高越好(表示成本控制好)
-            score = min(1, operating_cost_ratio / 1.5) * 10  # 假设1.5为基准
+        aisc = None
+        if revenue and cost_revenue and revenue > 0:
+            # AISC = (Cost + Capex) / Revenue * 100 (运营成本率，越低越好)
+            total_cost = cost_revenue + abs(capex) if capex else cost_revenue
+            aisc = (total_cost / revenue) * 100
+
+        if aisc:
+            score = normalize_negative(aisc, warn=85, target=60)
             result.details.append({
-                'metric': 'Operating Cost Ratio (运营成本率)',
-                'value': f"{operating_cost_ratio:.2f}x",
+                'metric': 'AISC (运营成本率)',
+                'value': f"{aisc:.2f}%",
                 'score': score,
                 'max': 10,
-                'unit': 'x',
-                'benchmark': '>1.0x',
-                'description': '矿企的成本控制能力。相当于"卖矿收入 vs 挖矿成本"，>1表示挖矿还能赚钱，即使矿价下跌也有安全边际。'
+                'unit': '%',
+                'benchmark': '60%-85%',
+                'description': '矿企的全成本指标。相当于"挖矿成本占收入比例"，60%为优秀(赚40%)，85%为预警(赚15%)。',
+                'weight': 0.25
             })
-            if operating_cost_ratio > 1.0:
-                result.passed_checks.append('Operating Cost')
+            result.log(f"AISC: {aisc:.2f}%, Score: {score:.2f}")
+            if aisc <= 85:
+                result.passed_checks.append('AISC')
 
-        # ===== 2. Production Guidance (产量指引) - Revenue Growth + 在建工程 =====
-        # 观察 Revenue Growth (YoY) 与 Construction In Progress
+        # ===== 2. CIP (在建工程增速) - 正向指标 =====
+        # 预警线: 0%, 目标值: 30%, 权重: 15%
         prod_growth = self._get_value('Revenue Growth (YoY)', 'Revenue Growth')
-        const_in_progress = self._get_value('Construction In Progress', 'Capital Work in Progress')
-        result.log(f"Production - Growth: {prod_growth}, Construction in Progress: {const_in_progress}")
 
-        if prod_growth:
-            score = max(0, min(1, prod_growth / 5)) * 10
+        if prod_growth is not None:
+            score = normalize_positive(prod_growth, warn=0, target=30)
             result.details.append({
-                'metric': 'Revenue Growth (产量指引)',
+                'metric': 'CIP (在建工程增速)',
                 'value': f"{prod_growth:.2f}%",
                 'score': score,
                 'max': 10,
                 'unit': '%',
-                'benchmark': '>0%',
-                'description': '矿企的收入增长。相当于"产量增长"，正增长说明有新矿投产或扩产，未来赚钱能力有保障。'
+                'benchmark': '0%-30%',
+                'description': '矿企的扩张能力。相当于"产量增长"，30%为优秀(高速扩张)，0%为预警(停滞)。',
+                'weight': 0.15
             })
-            if prod_growth >= 0:
-                result.passed_checks.append('Production Growth')
+            result.log(f"CIP/Growth: {prod_growth:.2f}%, Score: {score:.2f}")
+            if prod_growth > 0:
+                result.passed_checks.append('CIP')
 
-        # ===== 3. Underlying NPAT (核心净利润) =====
-        # 公式: Underlying NPAT = Net Income - Asset Writedown (after tax)
+        # ===== 3. Underlying NPAT (核心净利润) - 正向指标 =====
+        # 预警线: 减值>20%, 目标值: 无减值, 权重: 15%
         net_income = self._get_value('Net Income', 'Net Income to Common')
-        asset_writedown = self._get_value('Asset Writedown', 'Impairment of Assets', 'Asset Impairment')
-        result.log(f"Underlying NPAT - Net Income: {net_income}, Writedown: {asset_writedown}")
+        asset_writedown = self._get_value('Asset Writedown', 'Impairment of Assets')
 
         underlying_npat = net_income
-        if asset_writedown and net_income:
-            # writedown 是负数，需要加回
-            underlying_npat = net_income - asset_writedown  # asset_writedown 已经是负数
+        writedown_ratio = 0
+        if asset_writedown and net_income and net_income > 0:
+            # 减值率 = abs(Asset Writedown) / Net Income
+            writedown_ratio = abs(asset_writedown) / net_income * 100
+            # Underlying NPAT = Net Income - Asset Writedown (writedown is negative)
+            underlying_npat = net_income - asset_writedown
 
-        if underlying_npat and underlying_npat > 0:
-            score = 10
+        if underlying_npat is not None:
+            # 如果没有减值，得10分；如果减值率>20%，得0分
+            score = normalize_positive(100 - writedown_ratio, warn=80, target=100)
             result.details.append({
                 'metric': 'Underlying NPAT (核心净利润)',
                 'value': f"${underlying_npat:.0f}M",
                 'score': score,
                 'max': 10,
                 'unit': '$M',
-                'benchmark': '>0',
-                'description': '剔除资产减值后的真实利润。相当于"卖矿真赚了多少钱"，排除了卖资产等一次性损失，更反映经营能力。'
+                'benchmark': '无减值',
+                'description': '剔除资产减值后的真实利润。相当于"卖矿真赚了多少钱"，无减值为优秀。',
+                'weight': 0.15
             })
-            result.passed_checks.append('Underlying NPAT')
+            result.log(f"Underlying NPAT: {underlying_npat:.0f}, Writedown: {writedown_ratio:.2f}%, Score: {score:.2f}")
+            if writedown_ratio < 20:
+                result.passed_checks.append('Underlying NPAT')
 
-        # ===== 4. FCF Yield - >8% =====
-        fcf_yield = self._get_value('FCF Yield')
+        # ===== 4. FCF Yield - 正向指标 =====
+        # 预警线: 0%, 目标值: 8%, 权重: 20%
+        fcf_yield = self._get_value('FCF Yield', 'Free Cash Flow Yield')
+        if not fcf_yield:
+            # 尝试计算: FCF / Market Cap
+            fcf = self._get_value('Free Cash Flow')
+            market_cap = self._get_value('Market Capitalization')
+            if fcf and market_cap and market_cap > 0:
+                fcf_yield = (fcf / market_cap) * 100
+
         if fcf_yield:
-            score = min(1, fcf_yield / 8) * 10
+            score = normalize_positive(fcf_yield, warn=0, target=8)
             result.details.append({
                 'metric': 'FCF Yield (自由现金流收益率)',
                 'value': f"{fcf_yield:.2f}%",
                 'score': score,
                 'max': 10,
                 'unit': '%',
-                'benchmark': '>8%',
-                'description': '矿企真金白银赚到的现金收益率。相当于"牛市含金量"，>8%表示每年赚的现金足以覆盖高分红和资本开支。'
+                'benchmark': '0%-8%',
+                'description': '矿企真金白银赚到的现金收益率。相当于"牛市含金量"，8%为优秀。',
+                'weight': 0.20
             })
-            if fcf_yield > 8:
+            result.log(f"FCF Yield: {fcf_yield:.2f}%, Score: {score:.2f}")
+            if fcf_yield > 0:
                 result.passed_checks.append('FCF Yield')
 
-        # ===== 5. Net Debt/EBITDA - <1.0x =====
+        # ===== 5. Net Debt/EBITDA - 逆向指标 =====
+        # 预警线: 1.5x, 目标值: 0.5x, 权重: 15%
         net_debt_ebitda = self._get_value('Net Debt / EBITDA Ratio')
+        if not net_debt_ebitda:
+            # 尝试计算: (Total Debt - Cash) / EBITDA
+            total_debt = self._get_value('Total Debt')
+            cash = self._get_value('Cash & Equivalents')
+            ebitda = self._get_value('EBITDA')
+            if total_debt and cash is not None and ebitda and ebitda > 0:
+                net_debt_ebitda = (total_debt - cash) / ebitda
+
         if net_debt_ebitda:
-            score = max(0, (1.0 - net_debt_ebitda) / 1.0) * 10
+            score = normalize_negative(net_debt_ebitda, warn=1.5, target=0.5)
             result.details.append({
                 'metric': 'Net Debt/EBITDA (净杠杆率)',
                 'value': f"{net_debt_ebitda:.2f}x",
                 'score': score,
                 'max': 10,
                 'unit': 'x',
-                'benchmark': '<1.0x',
-                'description': '矿企债务压力。相当于"几年能还清债务"，<1x说明即使不赚钱也能1年内还清，极端行情下也能活下来。'
+                'benchmark': '0.5x-1.5x',
+                'description': '矿企债务压力。相当于"几年能还清债务"，0.5x为优秀，1.5x为预警。',
+                'weight': 0.15
             })
-            if net_debt_ebitda < 1.0:
+            result.log(f"Net Debt/EBITDA: {net_debt_ebitda:.2f}x, Score: {score:.2f}")
+            if net_debt_ebitda < 1.5:
                 result.passed_checks.append('Net Debt/EBITDA')
 
-        # ===== 6. Dividend Policy - >50% =====
+        # ===== 6. Dividend Payout - 正向指标 =====
+        # 预警线: 40%, 目标值: 60%, 权重: 10%
         payout = self._get_value('Payout Ratio')
+        if not payout:
+            # 尝试计算: Dividends / Net Income
+            dividends = self._get_value('Common Dividends Paid')
+            net_income = self._get_value('Net Income to Common')
+            if dividends and net_income and net_income > 0:
+                payout = (abs(dividends) / net_income) * 100
+
         if payout:
-            score = min(1, payout / 50) * 10
+            score = normalize_positive(payout, warn=40, target=60)
             result.details.append({
-                'metric': 'Dividend Policy (分红政策)',
+                'metric': 'Dividend Payout (分红率)',
                 'value': f"{payout:.2f}%",
                 'score': score,
                 'max': 10,
                 'unit': '%',
-                'benchmark': '>50%',
-                'description': '矿企派息比例。相当于"现金奶牛"程度，>50%说明赚的钱一半以上分给股东，是矿业公司的核心竞争力。'
+                'benchmark': '40%-60%',
+                'description': '矿企派息比例。相当于"现金奶牛"程度，60%为优秀。',
+                'weight': 0.10
             })
-            if payout > 50:
-                result.passed_checks.append('Dividend Policy')
+            result.log(f"Dividend Payout: {payout:.2f}%, Score: {score:.2f}")
+            if payout >= 40:
+                result.passed_checks.append('Dividend Payout')
 
-        result.total_score = sum(d['score'] for d in result.details)
-        result.max_score = 60
+        # 计算总分 (加权)
+        total_weight = 0
+        weighted_score = 0
+        for d in result.details:
+            weight = d.get('weight', 0)
+            total_weight += weight
+            weighted_score += d['score'] * weight
+
+        # 归一化到 0-10 分
+        if total_weight > 0:
+            result.total_score = (weighted_score / total_weight)
+        else:
+            result.total_score = sum(d['score'] for d in result.details)
+
+        result.max_score = 10
         return result
 
     def score_infrastructure(self) -> ScoreResult:
-        """基建六维度量化模型 - 根据 score_system.md 重构"""
+        """基建六维度量化模型 - 使用标准化评分 (0-10分制)
+
+        根据 score_normalisation.md 设计:
+        - EBITDA Margin: 正向, warn=45%, target=65%
+        - Cash Conversion: 正向, warn=50%, target=95%
+        - Interest Cover: 正向, warn=1.5x, target=4.0x
+        - EV/EBITDA: 逆向, warn=18x, target=10x
+        - CPI Linkage: 正向, warn=50%, target=100%
+        - WACE: 正向, warn=5年, target=20年
+        """
         result = ScoreResult(ticker=self.ticker, industry="Infrastructure")
 
-        # ===== 1. EBITDA Margin (运营利润率) - >55% =====
+        # ===== 1. EBITDA Margin (运营利润率) - 正向指标 =====
+        # 权重: 15%, 预警线: 45%, 目标: 65%
         ebitda_margin = self._get_value('EBITDA Margin')
         if ebitda_margin:
-            score = min(1, ebitda_margin / 55) * 10
+            score = normalize_positive(ebitda_margin, warn=45, target=65)
             result.details.append({
                 'metric': 'EBITDA Margin (运营利润率)',
                 'value': f"{ebitda_margin:.2f}%",
                 'score': score,
                 'max': 10,
+                'weight': 0.15,
                 'unit': '%',
-                'benchmark': '>55%',
-                'description': '基建股的"毛利率"。相当于"收租毛利率"，>55%说明管道/收费公路等资产盈利性很强。'
+                'benchmark': '45%-65%',
+                'description': '基建股的"毛利率"。相当于"收租毛利率"，45%-65%是合理区间。'
             })
-            if ebitda_margin > 55:
+            if score >= 7:  # 70%以上为通过
                 result.passed_checks.append('EBITDA Margin')
 
-        # ===== 2. Cash Conversion (现金转化率) - >95% =====
+        # ===== 2. Cash Conversion (现金转化率) - 正向指标 =====
+        # 权重: 15%, 预警线: 50%, 目标: 95%
         # 公式: Cash Conversion = Operating Cash Flow / EBITDA * 100
-        # 基建优等生要求 OCF 紧贴 EBITDA
         ocf = self._get_value('Operating Cash Flow')
         ebitda = self._get_value('EBITDA')
         result.log(f"Cash Conv - OCF: {ocf}, EBITDA: {ebitda}")
 
         if ocf and ebitda and ebitda != 0:
             cash_conv = (ocf / ebitda) * 100
-            score = min(1, cash_conv / 95) * 10
+            score = normalize_positive(cash_conv, warn=50, target=95)
             result.details.append({
                 'metric': 'Cash Conversion (现金转化率)',
                 'value': f"{cash_conv:.2f}%",
                 'score': score,
                 'max': 10,
+                'weight': 0.15,
                 'unit': '%',
-                'benchmark': '>95%',
-                'description': '利润变成真钱的能力。相当于"到账率"，>95%说明赚的利润基本都能收回现金，假利润少。'
+                'benchmark': '50%-95%',
+                'description': '利润变成真钱的能力。相当于"到账率"，50%-95%是合理区间。'
             })
-            if cash_conv > 95:
+            if score >= 7:
                 result.passed_checks.append('Cash Conv')
 
-        # ===== 3. Interest Cover Ratio (利息覆盖率) - >3x =====
+        # ===== 3. Interest Cover Ratio (利息覆盖率) - 正向指标 =====
+        # 权重: 25%, 预警线: 1.5x, 目标: 4.0x
         # 公式: Interest Cover = EBIT / Interest Expense
-        # 基建安全线要求 >3x
         interest_cov = self._get_value('Interest Coverage Ratio')
+        if not interest_cov:
+            # 尝试从组件计算
+            ebit = self._get_value('EBIT', 'Operating Income')
+            interest_expense = self._get_value('Interest Expense')
+            if ebit and interest_expense and interest_expense > 0:
+                interest_cov = ebit / interest_expense
+
         if interest_cov:
-            score = min(1, interest_cov / 3) * 10
+            score = normalize_positive(interest_cov, warn=1.5, target=4.0)
             result.details.append({
                 'metric': 'Interest Cover (利息覆盖率)',
                 'value': f"{interest_cov:.2f}x",
                 'score': score,
                 'max': 10,
+                'weight': 0.25,
                 'unit': 'x',
-                'benchmark': '>3x',
-                'description': '基建的安全带。相当于"赚的钱够还几次利息"，>3x说明加息也不怕，安全垫厚。'
+                'benchmark': '1.5x-4.0x',
+                'description': '基建的安全带。相当于"赚的钱够还几次利息"，1.5x-4.0x是合理区间。'
             })
-            if interest_cov > 3:
+            if score >= 7:
                 result.passed_checks.append('Interest Cover')
 
-        # ===== 4. EV/EBITDA (企业价值倍数) - 12-15x =====
+        # ===== 4. EV/EBITDA (企业价值倍数) - 逆向指标 =====
+        # 权重: 15%, 预警线: 18x, 目标: 10x (越低越好)
         ev_ebitda = self._get_value('EV/EBITDA Ratio', 'EV / EBITDA Ratio')
+        if not ev_ebitda:
+            # 尝试从组件计算: (Market Cap + Debt - Cash) / EBITDA
+            market_cap = self._get_value('Market Capitalization')
+            total_debt = self._get_value('Total Debt')
+            cash = self._get_value('Cash & Equivalents')
+            if market_cap and total_debt and ebitda and ebitda > 0:
+                ev_ebitda = (market_cap + total_debt - (cash or 0)) / ebitda
+
         if ev_ebitda:
-            score = self._check_range(ev_ebitda, 12, 15) * 10
+            score = normalize_negative(ev_ebitda, warn=18, target=10)
             result.details.append({
                 'metric': 'EV/EBITDA (企业价值倍数)',
                 'value': f"{ev_ebitda:.2f}x",
                 'score': score,
                 'max': 10,
+                'weight': 0.15,
                 'unit': 'x',
-                'benchmark': '12-15x',
-                'description': '基建估值指标。相当于"买下公司几年能回本"，12-15x是合理区间，太贵要小心。'
+                'benchmark': '10x-18x',
+                'description': '基建估值指标。相当于"买下公司几年能回本"，10x-18x是合理区间。'
             })
-            if 12 <= ev_ebitda <= 15:
+            if score >= 7:
                 result.passed_checks.append('EV/EBITDA')
 
-        # ===== 5. Debt/Equity (债务权益比) - <2.0x =====
-        debt_eq = self._get_value('Debt / Equity Ratio')
-        if debt_eq:
-            score = max(0, (2.0 - debt_eq) / 2.0) * 10
+        # ===== 5. CPI Linkage (CPI挂钩率) - 正向指标 =====
+        # 权重: 15%, 预警线: 50%, 目标: 100%
+        # 衡量收入与通胀挂钩的比例
+        cpi_linkage = self._get_value('CPI Linkage', 'CPI Linkage %')
+        if cpi_linkage:
+            score = normalize_positive(cpi_linkage, warn=50, target=100)
             result.details.append({
-                'metric': 'Debt/Equity (债务权益比)',
-                'value': f"{debt_eq:.2f}x",
+                'metric': 'CPI Linkage (抗通胀能力)',
+                'value': f"{cpi_linkage:.2f}%",
                 'score': score,
                 'max': 10,
-                'unit': 'x',
-                'benchmark': '<2.0x',
-                'description': '基建杠杆率。相当于"借了股东多少钱"，<2x说明债务不算高，极端行情下不会资不抵债。'
+                'weight': 0.15,
+                'unit': '%',
+                'benchmark': '50%-100%',
+                'description': '收入与通胀挂钩的比例。50%-100%说明有良好的通胀保护。'
             })
-            if debt_eq < 2.0:
-                result.passed_checks.append('Debt/Equity')
+            if score >= 7:
+                result.passed_checks.append('CPI Linkage')
 
-        # ===== 6. Current Ratio (流动比率) - >1.5x =====
-        current = self._get_value('Current Ratio')
-        if current:
-            score = min(1, current / 1.5) * 10
+        # ===== 6. WACE (加权平均合同到期年限) - 正向指标 =====
+        # 权重: 15%, 预警线: 5年, 目标: 20年
+        wace = self._get_value('WACE', 'Weighted Average Contract Expiry', 'Contract Expiry (Years)')
+        if wace:
+            score = normalize_positive(wace, warn=5, target=20)
             result.details.append({
-                'metric': 'Current Ratio (流动比率)',
-                'value': f"{current:.2f}x",
+                'metric': 'WACE (合同稳定性)',
+                'value': f"{wace:.1f} 年",
                 'score': score,
                 'max': 10,
-                'unit': 'x',
-                'benchmark': '>1.5x',
-                'description': '短期偿债能力。相当于"有没有钱还短期债"，>1.5x说明流动性好，不会突然资金链断裂。'
+                'weight': 0.15,
+                'unit': 'years',
+                'benchmark': '5-20年',
+                'description': '加权平均合同到期年限。5-20年说明收入稳定性好。'
             })
-            if current > 1.5:
-                result.passed_checks.append('Current Ratio')
+            if score >= 7:
+                result.passed_checks.append('WACE')
 
-        result.total_score = sum(d['score'] for d in result.details)
-        result.max_score = 60
+        # 计算总分 (加权)
+        total_weight = 0
+        weighted_score = 0
+        for d in result.details:
+            weight = d.get('weight', 0)
+            total_weight += weight
+            weighted_score += d['score'] * weight
+
+        # 归一化到 0-10 分
+        if total_weight > 0:
+            result.total_score = (weighted_score / total_weight)
+        else:
+            result.total_score = sum(d['score'] for d in result.details)
+
+        result.max_score = 10
         return result
 
     def score_healthcare(self) -> ScoreResult:
@@ -592,44 +777,79 @@ class ScoringSystem:
         return result
 
     def score_consumer_staples(self) -> ScoreResult:
-        """必需消费六维度量化模型 - 根据 score_system.md 重构"""
-        result = ScoreResult(ticker=self.ticker, industry="Consumer Staples")
+        """
+        必需消费六维度量化模型 - 根据 score_normalisation.md 重构
 
-        # ===== 1. EBIT Margin (息税前利润率) - 4.5%-6% =====
+        指标定义:
+        | 维度 | 指标 | 权重 | 预警线 (0分) | 目标值 (10分) | 极性 |
+        |------|------|------|--------------|---------------|------|
+        | 地位 | Market Share (趋势) | 15% | 下滑 | 增长 | 正向 |
+        | 盈利 | EBIT Margin | 20% | 4% | 9% | 正向 |
+        | 效率 | ROE | 20% | 15% | 35% | 正向 |
+        | 生死线 | Inventory Days | 20% | 100天 | 30天 | 逆向 |
+        | 税务 | Franking Credits | 10% | 0% | 100% | 正向 |
+        | 价格 | Forward PE | 15% | 30x | 18x | 逆向 |
+        """
+        result = ScoreResult(ticker=self.ticker, industry="Consumer Staples")
+        result.log(f"Starting consumer staples scoring for {self.ticker}")
+
+        # ===== 1. Market Share (趋势) - 15% =====
+        # 正向指标: 增长=10分, 下滑=0分
+        market_share_change = self._get_value('Market Share Change', 'Market Share Growth')
+        if market_share_change is not None:
+            score = normalize_positive(market_share_change, warn=0, target=5)
+            result.details.append({
+                'metric': 'Market Share (趋势)',
+                'value': f"{market_share_change:.1f}%",
+                'score': score,
+                'weight': 0.15,
+                'max': 10,
+                'unit': '%',
+                'benchmark': '增长=10分, 下滑=0分',
+                'description': '市场份额趋势。增长表示竞争力提升，下滑需警惕。'
+            })
+            if market_share_change > 0:
+                result.passed_checks.append('Market Share')
+
+        # ===== 2. EBIT Margin - 20% =====
+        # 正向指标: 预警4%, 目标9%
         ebit_margin = self._get_value('EBIT Margin', 'Operating Margin')
         if ebit_margin:
-            score = self._check_range(ebit_margin, 4.5, 6) * 10
+            score = normalize_positive(ebit_margin, warn=4, target=9)
             result.details.append({
                 'metric': 'EBIT Margin (息税前利润率)',
                 'value': f"{ebit_margin:.2f}%",
                 'score': score,
+                'weight': 0.20,
                 'max': 10,
                 'unit': '%',
-                'benchmark': '4.5%-6%',
-                'description': '零售业的"毛利率"。相当于"卖100块能赚多少"，4.5%-6%是超市/百货的正常水平。'
+                'benchmark': '预警4%, 目标9%',
+                'description': '零售业的"毛利率"。4%-9%区间，9%以上为优秀。'
             })
-            if 4.5 <= ebit_margin <= 6:
+            if ebit_margin >= 9:
                 result.passed_checks.append('EBIT Margin')
 
-        # ===== 2. ROE (净资产收益率) - >25% =====
+        # ===== 3. ROE - 20% =====
+        # 正向指标: 预警15%, 目标35%
         roe = self._get_value('ROE', 'Return on Equity (ROE)')
         if roe:
-            score = min(1, roe / 25) * 10
+            score = normalize_positive(roe, warn=15, target=35)
             result.details.append({
                 'metric': 'ROE (净资产收益率)',
                 'value': f"{roe:.2f}%",
                 'score': score,
+                'weight': 0.20,
                 'max': 10,
                 'unit': '%',
-                'benchmark': '>25%',
-                'description': '股东投入的回报率。相当于"WES/Bunnings赚钱能力"，>25%说明用很少的本金就能赚大钱，是零售巨头的标志。'
+                'benchmark': '预警15%, 目标35%',
+                'description': '股东投入的回报率。15%-35%区间，35%以上为优秀。'
             })
-            if roe > 25:
+            if roe >= 35:
                 result.passed_checks.append('ROE')
 
-        # ===== 3. Inventory Days (库存周转天数) =====
+        # ===== 4. Inventory Days - 20% =====
+        # 逆向指标: 预警100天, 目标30天
         # 公式: Inventory Days = (Inventory / Cost of Revenue) * 365
-        # 超市基准是 25-30 天, 百货可适当放宽
         inventory = self._get_value('Inventory', 'Inventories')
         cost_revenue = self._get_value('Cost of Revenue', 'Cost of Goods Sold')
         result.log(f"Inventory Days - Inventory: {inventory}, Cost: {cost_revenue}")
@@ -640,68 +860,57 @@ class ScoringSystem:
             result.log(f"Inventory Days - Calculated: {inv_days:.1f}")
 
         if inv_days:
-            # 越低越好, 30天以内为优秀
-            score = max(0, (60 - inv_days) / 60) * 10 if inv_days <= 60 else 0
+            score = normalize_negative(inv_days, warn=100, target=30)
             result.details.append({
                 'metric': 'Inventory Days (库存周转天数)',
                 'value': f"{inv_days:.1f} 天",
                 'score': score,
+                'weight': 0.20,
                 'max': 10,
                 'unit': 'days',
-                'benchmark': '<30天(超市)/<90天(百货)',
-                'description': '零售的生死线。相当于"货在仓库放几天能卖掉"，越短越好，货放越久钱亏越多。'
+                'benchmark': '预警100天, 目标30天',
+                'description': '零售的生死线。30天以内为优秀，100天以上为风险。'
             })
-            if inv_days < 30:
+            if inv_days <= 30:
                 result.passed_checks.append('Inventory Days')
 
-        # ===== 4. Forward PE (远期市盈率) - 20x-24x =====
+        # ===== 5. Franking Credits - 10% =====
+        # 正向指标: 预警0%, 目标100%
+        franking = self._get_value('Franking Credits', 'Imputation Credits', 'Tax Credit')
+        if franking:
+            score = normalize_positive(franking, warn=0, target=100)
+            result.details.append({
+                'metric': 'Franking Credits (税务抵扣)',
+                'value': f"{franking:.0f}%",
+                'score': score,
+                'weight': 0.10,
+                'max': 10,
+                'unit': '%',
+                'benchmark': '预警0%, 目标100%',
+                'description': '澳大利亚税务抵扣。100%表示完全抵税。'
+            })
+            if franking >= 100:
+                result.passed_checks.append('Franking')
+
+        # ===== 6. Forward PE - 15% =====
+        # 逆向指标: 预警30x, 目标18x (越低越好)
         fwd_pe = self._get_value('Forward PE')
         if fwd_pe:
-            score = self._check_range(fwd_pe, 20, 24) * 10
+            score = normalize_negative(fwd_pe, warn=30, target=18)
             result.details.append({
                 'metric': 'Forward PE (远期市盈率)',
                 'value': f"{fwd_pe:.2f}x",
                 'score': score,
+                'weight': 0.15,
                 'max': 10,
                 'unit': 'x',
-                'benchmark': '20-24x',
-                'description': '估值锚点。相当于"多少年能回本"，20-24x是防守型资产的正常估值，太贵要小心。'
+                'benchmark': '预警30x, 目标18x',
+                'description': '估值锚点。18x以下为低估，30x以上为高估。'
             })
-            if 20 <= fwd_pe <= 24:
+            if fwd_pe <= 18:
                 result.passed_checks.append('Forward PE')
 
-        # ===== 5. Dividend Yield (股息收益率) - >4% =====
-        div_yield = self._get_value('Dividend Yield')
-        if div_yield:
-            score = min(1, div_yield / 4) * 10
-            result.details.append({
-                'metric': 'Dividend Yield (股息收益率)',
-                'value': f"{div_yield:.2f}%",
-                'score': score,
-                'max': 10,
-                'unit': '%',
-                'benchmark': '>4%',
-                'description': '相当于"每年发多少红包"。>4%说明股价便宜或分红慷慨，是必需消费股的核心吸引力。'
-            })
-            if div_yield > 4:
-                result.passed_checks.append('Div Yield')
-
-        # ===== 6. Payout Ratio (股息支付率) - <80% =====
-        payout = self._get_value('Payout Ratio')
-        if payout:
-            score = max(0, (80 - payout) / 80) * 10
-            result.details.append({
-                'metric': 'Payout Ratio (股息支付率)',
-                'value': f"{payout:.2f}%",
-                'score': score,
-                'max': 10,
-                'unit': '%',
-                'benchmark': '<80%',
-                'description': '分红可持续性。相当于"赚100块分多少"，<80%说明留了钱用于扩张，不是"吃光花尽"。'
-            })
-            if payout < 80:
-                result.passed_checks.append('Payout')
-
+        # 计算加权总分
         result.total_score = sum(d['score'] for d in result.details)
         result.max_score = 60
         return result
@@ -747,6 +956,8 @@ class ScoringSystem:
             result = self.score_telecom()
         else:
             raise ValueError(f"未知行业: {industry}")
+        logging.info(f"Completed industry-specific scoring for {self.ticker} in {industry}")
+        logging.debug(f"Industry-specific details: {pprint.pformat(result.details)}")
         return self.score_common_checks(result)
 
 
@@ -927,6 +1138,265 @@ def generate_html_report(result: ScoreResult) -> str:
     return html
 
 
+
+
+def generate_comparison_html(results):
+    """生成多股票对比 HTML 报告
+
+    Args:
+        results: List of ScoreResult for multiple stocks
+
+    Returns:
+        HTML string with comparison charts and tables
+    """
+    import json
+
+    if not results:
+        return "<html><body>No data to compare</body></html>"
+
+    # Define colors for different stocks
+    colors = ['#1890ff', '#52c41a', '#faad14', '#ff4d4f', '#722ed1', '#13c2c2']
+
+    # Get all unique indicators from all results
+    all_indicators = []
+    for result in results:
+        for d in result.details:
+            if not d.get('is_common', False):
+                metric_name = d['metric'].split('(')[0].strip()
+                if metric_name not in [ind['name'] for ind in all_indicators]:
+                    all_indicators.append({
+                        'name': metric_name,
+                        'max': d['max']
+                    })
+
+    # Pad to 6 indicators if needed
+    while len(all_indicators) < 6:
+        all_indicators.append({'name': '', 'max': 10})
+
+    # Prepare radar chart data
+    radar_datasets = []
+    for i, result in enumerate(results):
+        values = []
+        result_metrics = {d['metric'].split('(')[0].strip(): d['score'] for d in result.details if not d.get('is_common', False)}
+        for ind in all_indicators:
+            values.append(round(result_metrics.get(ind['name'], 0), 1))
+
+        radar_datasets.append({
+            'ticker': result.ticker,
+            'data': values,
+            'color': colors[i % len(colors)]
+        })
+
+    # Generate radar datasets JavaScript
+    radar_series = []
+    for ds in radar_datasets:
+        color = ds['color']
+        radar_series.append('''{
+            value: ''' + json.dumps(ds['data']) + ''',
+            name: "''' + ds['ticker'] + '''",
+            areaStyle: { color: "''' + color + '''30" },
+            lineStyle: { color: "''' + color + '''", width: 2 },
+            itemStyle: { color: "''' + color + '''" }
+        }''')
+
+    # Generate comparison table rows
+    table_data = []
+    for i, result in enumerate(results):
+        percentage = (result.total_score / result.max_score * 100) if result.max_score > 0 else 0
+        if percentage >= 80:
+            rating = "★★★★★"
+        elif percentage >= 60:
+            rating = "★★★★☆"
+        elif percentage >= 40:
+            rating = "★★★☆☆"
+        else:
+            rating = "★★☆☆☆"
+
+        table_data.append({
+            'ticker': result.ticker,
+            'industry': result.industry,
+            'score': result.total_score,
+            'max': result.max_score,
+            'percentage': percentage,
+            'rating': rating,
+            'color': colors[i % len(colors)],
+            'passed': ', '.join(result.passed_checks) if result.passed_checks else '-'
+        })
+
+    # Legend HTML
+    legend_html = ''.join('<div class="legend-item"><div class="legend-dot" style="background: ' + colors[i % len(colors)] + '"></div><span>' + r.ticker + '</span></div>' for i, r in enumerate(results))
+
+    # Table rows HTML
+    table_rows = ''
+    for row in table_data:
+        table_rows += '''<tr>
+            <td style="color: ''' + row['color'] + '''; font-weight: bold;">''' + row['ticker'] + '''</td>
+            <td>''' + row['industry'] + '''</td>
+            <td>
+                <div class="score-bar"><div class="score-bar-fill" style="width: ''' + str(round(row['percentage'], 1)) + '''%; background: ''' + row['color'] + '''"></div></div>
+                <span>''' + str(round(row['score'], 1)) + '/' + str(row['max']) + '''</span>
+            </td>
+            <td class="rating">''' + row['rating'] + '''</td>
+            <td>''' + row['passed'] + '''</td>
+        </tr>'''
+
+    # X-axis data for bar chart
+    bar_x_data = json.dumps([r.ticker for r in results])
+    bar_data = json.dumps([{'value': round(r.total_score, 1), 'itemStyle': {'color': colors[i % len(colors)]}} for i, r in enumerate(results)])
+
+    # Legend data for radar
+    radar_legend = json.dumps([r.ticker for r in results])
+
+    # Indicators for radar
+    indicators_json = json.dumps(all_indicators)
+
+    html = '''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票对比分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; color: #fff; margin-bottom: 30px; }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .chart-card { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px; }
+        .chart-card h3 { color: #fff; margin-bottom: 15px; font-size: 1.2em; }
+        #radarChart { width: 100%; height: 450px; }
+        #barChart { width: 100%; height: 350px; }
+        .legend { display: flex; justify-content: center; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 8px; color: #fff; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .table-card { background: rgba(255,255,255,0.05); border-radius: 20px; padding: 20px; grid-column: 1 / -1; }
+        .table-card h3 { color: #fff; margin-bottom: 15px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        th { color: #888; font-weight: normal; }
+        td { color: #fff; }
+        .score-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; }
+        .score-bar-fill { height: 100%; background: linear-gradient(90deg, #1890ff, #52c41a); border-radius: 4px; }
+        .rating { color: #faad14; }
+        @media (max-width: 768px) { .content { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>股票对比分析</h1>
+            <p style="color: #888;">''' + str(len(results)) + ''' 只股票对比</p>
+        </div>
+
+        <div class="legend">
+            ''' + legend_html + '''
+        </div>
+
+        <div class="content">
+            <div class="chart-card">
+                <h3>雷达图对比</h3>
+                <div id="radarChart"></div>
+            </div>
+
+            <div class="chart-card">
+                <h3>总分对比</h3>
+                <div id="barChart"></div>
+            </div>
+
+            <div class="table-card">
+                <h3>详细对比</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>股票</th>
+                            <th>行业</th>
+                            <th>评分</th>
+                            <th>等级</th>
+                            <th>通过检查</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ''' + table_rows + '''
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Radar Chart
+        var radarChart = echarts.init(document.getElementById('radarChart'));
+        var radarOption = {
+            backgroundColor: 'transparent',
+            tooltip: {},
+            legend: {
+                data: ''' + radar_legend + ''',
+                bottom: 0,
+                textStyle: { color: '#fff' }
+            },
+            radar: {
+                indicator: ''' + indicators_json + ''',
+                shape: 'polygon',
+                splitNumber: 5,
+                axisName: { color: '#fff', fontSize: 12 },
+                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+                splitArea: { show: true, areaStyle: { color: ['rgba(255,255,255,0.02)', 'rgba(255,255,255,0.05)'] } },
+                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } }
+            },
+            series: [{
+                name: '对比',
+                type: 'radar',
+                data: [''' + ', '.join(radar_series) + ''']
+            }]
+        };
+        radarChart.setOption(radarOption);
+
+        // Bar Chart
+        var barChart = echarts.init(document.getElementById('barChart'));
+        var barOption = {
+            backgroundColor: 'transparent',
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            grid: { top: '10%', left: '3%', right: '4%', bottom: '10%', containLabel: true },
+            xAxis: {
+                type: 'category',
+                data: ''' + bar_x_data + ''',
+                axisLabel: { color: '#fff' },
+                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } }
+            },
+            yAxis: {
+                type: 'value',
+                max: 10,
+                axisLabel: { color: '#fff' },
+                axisLine: { lineStyle: { color: 'rgba(255,255,255,0.2)' } },
+                splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } }
+            },
+            series: [{
+                name: '得分',
+                type: 'bar',
+                data: ''' + bar_data + ''',
+                barWidth: '50%',
+                label: {
+                    show: true,
+                    position: 'top',
+                    color: '#fff',
+                    formatter: '{c}'
+                }
+            }]
+        };
+        barChart.setOption(barOption);
+
+        window.addEventListener('resize', function() {
+            radarChart.resize();
+            barChart.resize();
+        });
+    </script>
+</body>
+</html>'''
+
+    return html
+
 def main():
     parser = argparse.ArgumentParser(description='ASX股票12刀打分系统')
     parser.add_argument('data_file', help='财务数据JSON文件')
@@ -946,9 +1416,10 @@ def main():
     if args.output:
         with open(args.output, 'w', encoding='utf-8') as f:
             f.write(html)
-        print(f"报告已生成: {args.output}")
+        logger.info(f"报告已生成: {args.output}")
     else:
-        print(html)
+        logger.info("HTML output:")
+        logger.info(html)
 
 
 if __name__ == '__main__':

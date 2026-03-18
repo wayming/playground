@@ -1,0 +1,85 @@
+{
+  "ticker": "APA.AX",
+  "industry": "Infrastructure",
+  "source": "test_data",
+  "description": "Standard test data for APA infrastructure company based on score_system.md",
+  "income_statement": {
+    "Revenue": {
+      "TTM": 3197.0,
+      "FY 2025": 3204.0
+    },
+    "EBITDA": {
+      "TTM": 1960.0,
+      "FY 2025": 1890.0
+    },
+    "EBIT": {
+      "TTM": 982.0,
+      "FY 2025": 946.0
+    },
+    "Interest Expense": {
+      "TTM": 682.0,
+      "FY 2025": 661.0
+    },
+    "Operating Cash Flow": {
+      "TTM": 1196.0,
+      "FY 2025": 1284.0
+    }
+  },
+  "balance_sheet": {
+    "Cash & Equivalents": {
+      "TTM": 170.0,
+      "FY 2025": 800.0
+    },
+    "Total Debt": {
+      "TTM": 13224.0,
+      "FY 2025": 14132.0
+    }
+  },
+  "ratios": {
+    "EBITDA Margin": {
+      "TTM": 61.31,
+      "FY 2025": 58.99
+    },
+    "Interest Coverage Ratio": {
+      "TTM": 1.44,
+      "FY 2025": 1.43
+    },
+    "EV/EBITDA Ratio": {
+      "Current": 12.67,
+      "FY 2025": 12.53
+    },
+    "Debt / Equity Ratio": {
+      "Current": 2.0
+    },
+    "Current Ratio": {
+      "Current": 0.8
+    },
+    "Market Capitalization": {
+      "Current": 12073.0,
+      "TTM": 12073.0
+    }
+  },
+  "expected_results": {
+    "EBITDA Margin": {
+      "expected": 61.31,
+      "formula": "EBITDA / Revenue",
+      "calculation": "1960 / 3197 * 100 = 61.31%"
+    },
+    "Cash Conversion": {
+      "expected": 61.02,
+      "formula": "Operating Cash Flow / EBITDA",
+      "calculation": "1196 / 1960 * 100 = 61.02%"
+    },
+    "Interest Cover": {
+      "expected": 1.44,
+      "formula": "EBIT / Interest Expense",
+      "calculation": "982 / 682 = 1.44x"
+    },
+    "EV/EBITDA": {
+      "expected": 12.82,
+      "formula": "(Market Cap + Total Debt - Cash) / EBITDA",
+      "calculation": "(12073 + 13224 - 170) / 1960 = 12.82x",
+      "note": "Using TTM values"
+    }
+  }
+}

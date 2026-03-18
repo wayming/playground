@@ -1,0 +1,94 @@
+{
+  "ticker": "RIO.AX",
+  "industry": "Materials",
+  "source": "test_data",
+  "description": "Standard test data for RIO mining company based on score_system.md",
+  "income_statement": {
+    "Revenue": {
+      "FY 2025": 57638.0
+    },
+    "Revenue Growth (YoY)": {
+      "FY 2025": 7.42
+    },
+    "Cost of Revenue": {
+      "FY 2025": 41428.0
+    },
+    "Capital Expenditures": {
+      "FY 2025": -12335.0
+    },
+    "Net Income": {
+      "FY 2025": 9966.0
+    },
+    "Asset Writedown": {
+      "FY 2025": -341.0
+    },
+    "Free Cash Flow": {
+      "FY 2025": 4497.0
+    },
+    "EBITDA": {
+      "FY 2025": 20285.0
+    },
+    "Common Dividends Paid": {
+      "FY 2025": 6145.0
+    },
+    "Net Income to Common": {
+      "FY 2025": 9966.0
+    }
+  },
+  "balance_sheet": {
+    "Cash & Equivalents": {
+      "FY 2025": 9420.0
+    },
+    "Total Debt": {
+      "FY 2025": 23748.0
+    }
+  },
+  "ratios": {
+    "Free Cash Flow Yield": {
+      "FY 2025": 2.18
+    },
+    "Net Debt / EBITDA Ratio": {
+      "FY 2025": 0.71
+    },
+    "Payout Ratio": {
+      "FY 2025": 61.66
+    },
+    "Market Capitalization": {
+      "Current": 216749.0,
+      "FY 2025": 206124.0
+    }
+  },
+  "expected_results": {
+    "Operating Cost Ratio": {
+      "expected": 6.9,
+      "formula": "(Revenue - Cost of Revenue - Capex) / Revenue",
+      "calculation": "(57638 - 41428 - 12335) / 57638 * 100 = 6.9%",
+      "note": "This is inverse of the formula in score_system - need to verify"
+    },
+    "Revenue Growth": {
+      "expected": 7.42,
+      "formula": "Revenue Growth (YoY)",
+      "source": "directly from ratios"
+    },
+    "Underlying NPAT": {
+      "expected": 10307,
+      "formula": "Net Income - Asset Writedown",
+      "calculation": "9966 - (-341) = 10307 (writedown is negative so we add)"
+    },
+    "FCF Yield": {
+      "expected": 2.18,
+      "formula": "Free Cash Flow / Market Cap",
+      "calculation": "4497 / 206124 * 100 = 2.18%"
+    },
+    "Net Debt/EBITDA": {
+      "expected": 0.71,
+      "formula": "(Total Debt - Cash) / EBITDA",
+      "calculation": "(23748 - 9420) / 20285 = 0.71x"
+    },
+    "Payout Ratio": {
+      "expected": 61.66,
+      "formula": "Common Dividends Paid / Net Income to Common",
+      "calculation": "6145 / 9966 * 100 = 61.66%"
+    }
+  }
+}

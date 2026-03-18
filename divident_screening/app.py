@@ -25,7 +25,9 @@ def index():
 def analyze():
     data = request.get_json()
     symbol = data.get('symbol', '').upper().strip()
-    industry = data.get('industry', 'materials')
+
+    # Auto-detect industry from scraped data (not from user input)
+    industry = None
 
     if not symbol:
         return jsonify({'error': 'Please enter a stock symbol'}), 400
@@ -67,6 +69,9 @@ def analyze():
             # Use existing json file path
             json_file = sorted(existing_files)[-1]
             raw_file = None
+
+        # Auto-detect industry from scraped data
+        industry = detect_industry(symbol, json_data)
 
         # Score the stock
         scorer = ScoringSystem(json_data)
@@ -120,8 +125,8 @@ def history():
         try:
             with open(os.path.join(json_dir, f), 'r') as fp:
                 data = json.load(fp)
-            # Auto-detect industry
-            industry = detect_industry(symbol)
+            # Auto-detect industry from scraped data
+            industry = detect_industry(symbol, data)
             scorer = ScoringSystem(data)
             score_result = scorer.score(industry)
             result.append({
@@ -141,9 +146,54 @@ def history():
     return jsonify(result)
 
 
-def detect_industry(symbol):
-    """Auto-detect industry based on common ASX stocks"""
-    banks = ['CBA', 'NAB', 'ANZ', 'WBC', 'MQG', 'BOQ', 'BEN', 'SUN', 'ZUR']  # 添加更多银行
+def map_industry_name(industry_name: str) -> str:
+    """将 stockanalysis.com 的行业名称映射到内部行业类型"""
+    if not industry_name:
+        return 'materials'
+
+    industry_lower = industry_name.lower()
+
+    # Banks / Financial
+    if 'bank' in industry_lower or 'financial' in industry_lower:
+        return 'banks'
+
+    # Materials / Mining / Metals
+    if any(kw in industry_lower for kw in ['basic materials', 'metals', 'mining', 'gold', 'coal', 'steel', 'material']):
+        return 'materials'
+
+    # Infrastructure / Utilities / Energy / Oil / Gas
+    if any(kw in industry_lower for kw in ['utilities', 'energy', 'oil', 'gas', 'infrastructure', 'regulated']):
+        return 'infrastructure'
+
+    # Healthcare
+    if any(kw in industry_lower for kw in ['healthcare', 'biotechnology', 'pharmaceutical', 'medical']):
+        return 'healthcare'
+
+    # Telecom / Communication
+    if any(kw in industry_lower for kw in ['telecom', 'communication']):
+        return 'telecom'
+
+    # Consumer
+    if 'consumer' in industry_lower:
+        return 'consumer_staples'
+
+    # 默认
+    return 'materials'
+
+
+def detect_industry(symbol, json_data=None):
+    """Auto-detect industry based on stockanalysis.com data, fallback to symbol lookup"""
+    # 首先尝试从抓取的数据中获取行业信息
+    if json_data and json_data.get('industry'):
+        industry_info = json_data['industry']
+        industry_name = industry_info.get('industry') or industry_info.get('sector')
+        if industry_name:
+            mapped = map_industry_name(industry_name)
+            print(f"Detected industry from stockanalysis.com: {industry_name} -> {mapped}")
+            return mapped
+        
+    # Fallback: 基于常见 ASX 股票代码检测
+    banks = ['CBA', 'NAB', 'ANZ', 'WBC', 'MQG', 'BOQ', 'BEN', 'SUN', 'ZUR']
     materials = ['BHP', 'RIO', 'FMG', 'WSA', 'NCM', 'S32', 'LYC', 'AWC']
     infrastructure = ['APA', 'WDS', 'SCG', 'AST', 'CTD', 'DJI']
     healthcare = ['CSL', 'RHC', 'SHL', 'MSB', 'APE', 'FDV']
