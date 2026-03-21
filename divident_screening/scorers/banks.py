@@ -1,229 +1,277 @@
 """
-Banks Scorecard - Score Normalization Module
+Banks Scorecard - 银行基本面打分系统
 
-根据 score_normalisation.md 实现银行六维度量化评分
-- NIM (净息差): 正向指标
-- CET1 Ratio: 正向指标
-- Cost-to-Income: 逆向指标
-- ROE: 正向指标
-- Bad Debt Ratio: 逆向指标
-- Payout Ratio: 趋中指标 (50%-90% 区间内，75% 最优)
+根据 docs/score_bank.md 实现银行七维度量化评分:
+1. NIM (净息差): 1.8%-2.1% 区间评分
+2. CET1 Ratio (一级资本): > 11.5% 或 >= 6.5%
+3. Cost-to-Income (成本收入比): <45% 为目标
+4. ROE (净资产收益率): 11%-13% 区间评分
+5. Credit Risk (坏账风险): <0.15% 为目标
+6. Payout Ratio (分红率): 70%-80% 区间评分
+7. LVR (贷款价值比): <50% 为目标，>75% 时总分折半
 """
 
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
 
 
-# ==================== 核心标准化公式 ====================
+# ==================== 评分函数 ====================
 
-def normalize_positive(value: float, warn: float, target: float) -> float:
+def score_nim(nim: Optional[float]) -> Tuple[float, str]:
     """
-    正向指标标准化 (越大越好)
+    NIM (净息差) 评分
 
-    公式: score = (value - warn) / (target - warn) × 10
-
-    边界处理:
-    - 超过目标值 → 10 分
-    - 低于预警值 → 0 分
-
-    Args:
-        value: 实际值
-        warn: 预警线 (0分)
-        target: 目标值 (10分)
+    判定逻辑:
+        10分: >= 2.1%
+        7分: 1.8% - 2.1%
+        4分: 1.6% - 1.8%
+        0分: < 1.6%
 
     Returns:
-        标准化分数 (0-10)
+        (score, level): 分数和评级
     """
-    if value is None:
-        return 0.0
+    if nim is None:
+        return 0.0, "N/A"
 
-    if value >= target:
-        return 10.0
-    elif value <= warn:
-        return 0.0
+    if nim >= 2.1:
+        return 10.0, "excellent"
+    elif nim >= 1.8:
+        return 7.0, "good"
+    elif nim >= 1.6:
+        return 4.0, "fair"
     else:
-        return (value - warn) / (target - warn) * 10
+        return 0.0, "poor"
 
 
-def normalize_negative(value: float, warn: float, target: float) -> float:
+def score_cet1(cet1: Optional[float]) -> Tuple[float, str]:
     """
-    逆向指标标准化 (越小越好)
+    CET1 Ratio (一级资本充足率) 评分
 
-    公式: score = (warn - value) / (warn - target) × 10
+    判定逻辑:
+        - 如果 CET1 >= 11%: 使用官方标准
+          - >= 12.5%: 10分
+          - 11% - 12.5%: 7分
+          - < 10.5%: 0分
 
-    边界处理:
-    - 低于目标值 → 10 分
-    - 超过预警值 → 0 分
+        - 如果 CET1 < 11%: 使用澳洲标准
+          - >= 6.5%: 10分
+          - 5.5% - 6.5%: 7分
+          - < 5%: 0分
 
     Args:
-        value: 实际值
-        warn: 预警线 (0分)
-        target: 目标值 (10分)
+        cet1: CET1 Ratio (百分比，如 12.5 表示 12.5%)
 
     Returns:
-        标准化分数 (0-10)
+        (score, level): 分数和评级
     """
-    if value is None:
-        return 0.0
+    if cet1 is None:
+        return 0.0, "N/A"
 
-    if value <= target:
-        return 10.0
-    elif value >= warn:
-        return 0.0
+    # CET1 >= 11% 使用官方标准
+    if cet1 >= 11.0:
+        if cet1 >= 12.5:
+            return 10.0, "excellent"
+        else:  # 11.0 <= cet1 < 12.5
+            return 7.0, "good"
+    # CET1 < 11% 使用澳洲标准
     else:
-        return (warn - value) / (warn - target) * 10
+        if cet1 >= 6.5:
+            return 10.0, "excellent"
+        elif cet1 >= 5.5:
+            return 7.0, "good"
+        else:
+            return 0.0, "poor"
 
 
-def normalize_range(
-    value: float,
-    warn_low: float,
-    target_low: float,
-    target_high: float,
-    warn_high: float
-) -> float:
+def score_cost_to_income(cti: Optional[float]) -> Tuple[float, str]:
     """
-    趋中指标标准化 (最优值在中间区间)
+    Cost-to-Income (成本收入比) 评分
 
-    公式:
-    - 在目标区间内 → 10 分
-    - 超过预警边界 → 0 分
-    - 在区间之间 → 线性插值
-
-    Args:
-        value: 实际值
-        warn_low: 低位预警线 (0分)
-        target_low: 低位目标值 (10分)
-        target_high: 高位目标值 (10分)
-        warn_high: 高位预警线 (0分)
+    判定逻辑:
+        10分: < 43%
+        7分: 43% - 47%
+        4分: 48% - 52%
+        0分: > 55%
 
     Returns:
-        标准化分数 (0-10)
+        (score, level): 分数和评级
     """
-    if value is None:
-        return 0.0
+    if cti is None:
+        return 0.0, "N/A"
 
-    # 在目标区间内 (最优)
-    if target_low <= value <= target_high:
-        return 10.0
-
-    # 在低位预警和低位目标之间
-    if value < target_low:
-        if value <= warn_low:
-            return 0.0
-        else:
-            return (value - warn_low) / (target_low - warn_low) * 10
-
-    # 在高位目标和高位预警之间
-    if value > target_high:
-        if value >= warn_high:
-            return 0.0
-        else:
-            return (warn_high - value) / (warn_high - target_high) * 10
-
-    return 0.0
+    if cti < 43:
+        return 10.0, "excellent"
+    elif cti <= 47:
+        return 7.0, "good"
+    elif cti <= 52:
+        return 4.0, "fair"
+    else:
+        return 0.0, "poor"
 
 
-# ==================== 银行计分卡参数 ====================
+def score_roe(roe: Optional[float]) -> Tuple[float, str]:
+    """
+    ROE (净资产收益率) 评分
 
-# 指标定义: (权重, 预警线, 目标值, 极性)
-BANKS_METRICS = {
-    'NIM': {
-        'weight': 0.20,
-        'warn': 1.70,
-        'target': 2.10,
-        'polarity': 'positive',
-        'display_name': 'NIM (净息差)',
-        'unit': '%',
-        'description': '银行贷出去的款收到的利息与吸收存款付出利息的差额'
-    },
-    'CET1': {
-        'weight': 0.15,
-        'warn': 11.0,
-        'target': 13.0,
-        'polarity': 'positive',
-        'display_name': 'CET1 Ratio (一级资本充足率)',
-        'unit': '%',
-        'description': '银行为应对贷款损失预留的本钱，越高越安全'
-    },
-    'Cost-to-Income': {
-        'weight': 0.15,
-        'warn': 50.0,
-        'target': 40.0,
-        'polarity': 'negative',
-        'display_name': 'Cost-to-Income (成本收入比)',
-        'unit': '%',
-        'description': '每赚100块要花多少钱，越低越好'
-    },
-    'ROE': {
-        'weight': 0.20,
-        'warn': 10.0,
-        'target': 14.0,
-        'polarity': 'positive',
-        'display_name': 'ROE (净资产收益率)',
-        'unit': '%',
-        'description': '股东投入100块能赚多少，越高越好'
-    },
-    'Bad Debt': {
-        'weight': 0.20,
-        'warn': 0.15,
-        'target': 0.05,
-        'polarity': 'negative',
-        'display_name': 'Bad Debt Ratio (不良贷款率)',
-        'unit': '%',
-        'description': '借出去的钱收不回来的比例，越低越好'
-    },
-    'Payout': {
-        'weight': 0.10,
-        'warn_low': 50.0,
-        'target_low': 75.0,
-        'target_high': 75.0,
-        'warn_high': 90.0,
-        'polarity': 'range',
-        'display_name': 'Payout Ratio (股息支付率)',
-        'unit': '%',
-        'description': '把利润分给股东的比例，75%最优'
-    }
+    判定逻辑:
+        10分: >= 14%
+        7分: 11% - 13.9%
+        4分: 8% - 10.9%
+        0分: < 7%
+
+    Returns:
+        (score, level): 分数和评级
+    """
+    if roe is None:
+        return 0.0, "N/A"
+
+    if roe >= 14:
+        return 10.0, "excellent"
+    elif roe >= 11:
+        return 7.0, "good"
+    elif roe >= 8:
+        return 4.0, "fair"
+    else:
+        return 0.0, "poor"
+
+
+def score_credit_risk(provision: Optional[float], gross_loans: Optional[float]) -> Tuple[float, str]:
+    """
+    Credit Risk (坏账风险) 评分
+
+    公式: Credit Risk = Provision for Loan Losses / Gross Loans * 100
+
+    判定逻辑:
+        10分: < 0.10%
+        7分: 0.11% - 0.20%
+        4分: 0.21% - 0.40%
+        0分: > 0.50%
+
+    Returns:
+        (score, level): 分数和评级
+    """
+    if provision is None or gross_loans is None or gross_loans == 0:
+        return 0.0, "N/A"
+
+    bad_debt_ratio = (provision / gross_loans) * 100
+
+    if bad_debt_ratio < 0.10:
+        return 10.0, "excellent"
+    elif bad_debt_ratio <= 0.20:
+        return 7.0, "good"
+    elif bad_debt_ratio <= 0.40:
+        return 4.0, "fair"
+    else:
+        return 0.0, "poor"
+
+
+def score_payout(payout: Optional[float]) -> Tuple[float, str]:
+    """
+    Payout Ratio (分红率) 评分
+
+    判定逻辑:
+        10分: 70% - 75% (黄金平衡点)
+        7分: 76% - 85% (慷慨)
+        4分: 50% - 69% (保留增长)
+        0分: > 95% (不可持续)
+
+    Returns:
+        (score, level): 分数和评级
+    """
+    if payout is None:
+        return 0.0, "N/A"
+
+    if 70 <= payout <= 75:
+        return 10.0, "excellent"
+    elif 76 <= payout <= 85:
+        return 7.0, "good"
+    elif 50 <= payout <= 69:
+        return 4.0, "fair"
+    else:
+        return 0.0, "poor"
+
+
+def score_lvr(lvr: Optional[float]) -> Tuple[float, str]:
+    """
+    LVR (贷款价值比) 评分
+
+    判定逻辑:
+        10分: < 50% (极度安全)
+        7分: 50% - 60% (标准稳健)
+        4分: 60% - 70% (风险敞口增大)
+        0分: > 75% (高杠杆，有系统性风险)
+
+    Returns:
+        (score, level): 分数和评级
+    """
+    if lvr is None:
+        return 0.0, "N/A"
+
+    if lvr < 50:
+        return 10.0, "excellent"
+    elif lvr <= 60:
+        return 7.0, "good"
+    elif lvr <= 70:
+        return 4.0, "fair"
+    else:
+        return 0.0, "poor"
+
+
+# ==================== 权重配置 ====================
+
+# 评分权重 (根据 score_bank.md)
+WEIGHTS = {
+    'NIM': 0.20,
+    'CET1': 0.20,
+    'Cost-to-Income': 0.15,
+    'ROE': 0.15,
+    'Credit Risk': 0.20,
+    'Payout': 0.10
 }
 
 
-def calculate_nim_score(nim: Optional[float]) -> float:
-    """计算 NIM 分数"""
-    return normalize_positive(nim, warn=1.70, target=2.10)
+# ==================== 数据提取工具 ====================
+
+def get_value(data: Dict[str, Any], *keys: str) -> Optional[float]:
+    """
+    从数据字典中提取值
+
+    优先级: TTM > Current > FY 2025 > Annual Report 2025
+
+    Args:
+        data: 包含财务数据的字典 (ratios/income_statement/balance_sheet/cash_flow/extra)
+        *keys: 要查找的键名
+
+    Returns:
+        找到的值 (float) 或 None
+    """
+    # 定义优先级
+    periods = ['TTM', 'Current', 'FY 2025', 'Annual Report 2025', 'FY 2024']
+
+    for key in keys:
+        for section in ['ratios', 'income_statement', 'balance_sheet', 'cash_flow', 'extra']:
+            if section in data:
+                section_data = data[section]
+                if key in section_data:
+                    val = section_data[key]
+                    if isinstance(val, (int, float)):
+                        return float(val)
+                    elif isinstance(val, dict):
+                        for period in periods:
+                            if period in val:
+                                return float(val[period])
+    return None
 
 
-def calculate_cet1_score(cet1: Optional[float]) -> float:
-    """计算 CET1 分数"""
-    return normalize_positive(cet1, warn=11.0, target=13.0)
-
-
-def calculate_cost_to_income_score(cti: Optional[float]) -> float:
-    """计算 Cost-to-Income 分数"""
-    return normalize_negative(cti, warn=50.0, target=40.0)
-
-
-def calculate_roe_score(roe: Optional[float]) -> float:
-    """计算 ROE 分数"""
-    return normalize_positive(roe, warn=10.0, target=14.0)
-
-
-def calculate_bad_debt_score(bad_debt: Optional[float]) -> float:
-    """计算 Bad Debt 分数"""
-    return normalize_negative(bad_debt, warn=0.15, target=0.05)
-
-
-def calculate_payout_score(payout: Optional[float]) -> float:
-    """计算 Payout 分数 (趋中指标)"""
-    return normalize_range(
-        payout,
-        warn_low=50.0,
-        target_low=75.0,
-        target_high=75.0,
-        warn_high=90.0
-    )
-
+# ==================== 主评分函数 ====================
 
 def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
     """
     计算银行综合评分
+
+    根据 docs/score_bank.md 的公式:
+    Score = (NIM_Score * 0.2) + (CET1_Score * 0.2) + (CIR_Score * 0.15) + (ROE_Score * 0.15) + (Credit_Score * 0.2) + (Payout_Score * 0.1)
+
+    如果 LVR > 75%: Score = Score * 0.5
 
     Args:
         data: 包含财务数据的字典
@@ -231,99 +279,141 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         包含各项分数和总分的字典
     """
-    # 提取数据
-    ratios = data.get('ratios', {})
-    income = data.get('income_statement', {})
-    balance = data.get('balance_sheet', {})
+    # ===== 提取数据 =====
+    # NIM 相关
+    net_interest_income = get_value(data, 'Net Interest Income')
+    cash = get_value(data, 'Cash & Equivalents')
+    investment_securities = get_value(data, 'Investment Securities')
+    trading_securities = get_value(data, 'Trading Asset Securities')
+    net_loans = get_value(data, 'Net Loans')
 
-    # 兼容不同数据格式
-    def get_value(*keys):
-        for key in keys:
-            # 先检查 ratios
-            if key in ratios:
-                val = ratios[key]
-                if isinstance(val, dict):
-                    for period in ['TTM', 'Current', 'FY 2025', 'Annual Report 2025']:
-                        if period in val:
-                            return float(val[period])
-                elif isinstance(val, (int, float)):
-                    return float(val)
-            # 再检查 income_statement
-            if key in income:
-                val = income[key]
-                if isinstance(val, dict):
-                    for period in ['TTM', 'Current', 'FY 2025', 'Annual Report 2025']:
-                        if period in val:
-                            return float(val[period])
-                elif isinstance(val, (int, float)):
-                    return float(val)
-            # 最后检查 balance_sheet
-            if key in balance:
-                val = balance[key]
-                if isinstance(val, dict):
-                    for period in ['TTM', 'Current', 'FY 2025', 'Annual Report 2025']:
-                        if period in val:
-                            return float(val[period])
-                elif isinstance(val, (int, float)):
-                    return float(val)
-        return None
+    # 计算 IEA (Interest Earning Assets)
+    iea = 0
+    if cash:
+        iea += cash
+    if investment_securities:
+        iea += investment_securities
+    if trading_securities:
+        iea += trading_securities
+    if net_loans:
+        iea += net_loans
 
-    # 计算各指标分数
-    nim = get_value('NIM', 'Net Interest Margin')
-    cet1 = get_value('CET1 Ratio', 'Common Equity Tier 1 Ratio')
-    cti = get_value('Cost-to-Income Ratio', 'Cost to Income Ratio')
-    roe = get_value('ROE', 'Return on Equity (ROE)')
-    bad_debt = get_value('Bad Debt Ratio', 'Non-Performing Loan Ratio', 'NPL Ratio')
-    payout = get_value('Payout Ratio', 'Dividend Payout Ratio')
+    # 计算 NIM
+    nim = None
+    if net_interest_income and iea > 0:
+        nim = (net_interest_income / iea) * 100
 
-    scores = {
-        'NIM': calculate_nim_score(nim),
-        'CET1': calculate_cet1_score(cet1),
-        'Cost-to-Income': calculate_cost_to_income_score(cti),
-        'ROE': calculate_roe_score(roe),
-        'Bad Debt': calculate_bad_debt_score(bad_debt),
-        'Payout': calculate_payout_score(payout)
-    }
+    # 其他指标
+    cet1 = get_value(data, 'CET1 Ratio', 'Common Equity Tier 1 Ratio')
+    # 如果没有 CET1 Ratio，尝试从 CET1 Capital 和 RWA 计算
+    if not cet1:
+        cet1_capital = get_value(data, 'Common Equity Tier 1 Capital')
+        rwa = get_value(data, 'Risk Weighted Assets')
+        if cet1_capital and rwa and rwa > 0:
+            cet1 = (cet1_capital / rwa) * 100
 
-    # 计算加权总分
-    total_score = sum(
-        scores[metric] * BANKS_METRICS[metric]['weight']
-        for metric in BANKS_METRICS
+    # Cost-to-Income: 如果没有直接数据，尝试计算
+    cost_to_income = get_value(data, 'Cost-to-Income Ratio', 'Cost to Income Ratio', 'Operating Efficiency Ratio')
+    if not cost_to_income:
+        # Cost-to-Income = Total Non-Interest Expense / Revenue * 100
+        total_expense = get_value(data, 'Total Non-Interest Expense', 'Operating Expenses', 'Cost of Operations')
+        revenue = get_value(data, 'Revenues Before Loan Losses', 'Total Income', 'Revenue', 'Total Revenue', 'Operating Revenue')
+        if total_expense and revenue and revenue > 0:
+            cost_to_income = (total_expense / revenue) * 100
+
+    roe = get_value(data, 'Return on Equity (ROE)', 'ROE')
+    provision = get_value(data, 'Provision for Loan Losses', 'Loan Loss Provision', 'Credit Loss Provision')
+    gross_loans = get_value(data, 'Gross Loans')
+    payout = get_value(data, 'Payout Ratio', 'Dividend Payout Ratio')
+
+    # LVR: 优先使用 Group Average LVR
+    lvr = get_value(data, 'LVR', 'Loan to Value Ratio', 'Group Average LVR')
+
+    # ===== 计算各项分数 =====
+    nim_score, nim_level = score_nim(nim)
+    cet1_score, cet1_level = score_cet1(cet1)
+    cti_score, cti_level = score_cost_to_income(cost_to_income)
+    roe_score, roe_level = score_roe(roe)
+    credit_score, credit_level = score_credit_risk(provision, gross_loans)
+    payout_score, payout_level = score_payout(payout)
+    lvr_score, lvr_level = score_lvr(lvr)
+
+    # ===== 计算加权总分 =====
+    weighted_score = (
+        nim_score * WEIGHTS['NIM'] +
+        cet1_score * WEIGHTS['CET1'] +
+        cti_score * WEIGHTS['Cost-to-Income'] +
+        roe_score * WEIGHTS['ROE'] +
+        credit_score * WEIGHTS['Credit Risk'] +
+        payout_score * WEIGHTS['Payout']
     )
 
+    # LVR 惩罚: 如果 LVR > 75%, 总分折半
+    if lvr is not None and lvr > 75:
+        weighted_score = weighted_score * 0.5
+
+    # ===== 构建结果 =====
     return {
-        'total_score': total_score,
+        'ticker': data.get('ticker', ''),
+        'total_score': round(weighted_score, 2),
         'max_score': 10.0,
+        'lvr_penalty': lvr is not None and lvr > 75,
         'metrics': {
             'NIM': {
                 'value': nim,
-                'score': scores['NIM'],
-                **BANKS_METRICS['NIM']
+                'score': nim_score,
+                'level': nim_level,
+                'benchmark': '1.8%-2.1%',
+                'weight': WEIGHTS['NIM'],
+                'description': '银行的"进销差价"，越高说明吃利差的能力越强'
             },
             'CET1': {
                 'value': cet1,
-                'score': scores['CET1'],
-                **BANKS_METRICS['CET1']
+                'score': cet1_score,
+                'level': cet1_level,
+                'benchmark': '>11.5% 或 >=6.5%',
+                'weight': WEIGHTS['CET1'],
+                'description': '压箱底的保命钱，应对金融危机的底气'
             },
             'Cost-to-Income': {
-                'value': cti,
-                'score': scores['Cost-to-Income'],
-                **BANKS_METRICS['Cost-to-Income']
+                'value': cost_to_income,
+                'score': cti_score,
+                'level': cti_level,
+                'benchmark': '<45%',
+                'weight': WEIGHTS['Cost-to-Income'],
+                'description': '赚100块钱要花多少水电费和人工，越低越精简高效'
             },
             'ROE': {
                 'value': roe,
-                'score': scores['ROE'],
-                **BANKS_METRICS['ROE']
+                'score': roe_score,
+                'level': roe_level,
+                'benchmark': '11%-13%',
+                'weight': WEIGHTS['ROE'],
+                'description': '股东投入1块钱，一年能收回多少钱'
             },
-            'Bad Debt': {
-                'value': bad_debt,
-                'score': scores['Bad Debt'],
-                **BANKS_METRICS['Bad Debt']
+            'Credit Risk': {
+                'value': (provision / gross_loans * 100) if provision and gross_loans else None,
+                'score': credit_score,
+                'level': credit_level,
+                'benchmark': '<0.15%',
+                'weight': WEIGHTS['Credit Risk'],
+                'description': '每借出去100块钱，有多少是预计收不回来的'
             },
             'Payout': {
                 'value': payout,
-                'score': scores['Payout'],
-                **BANKS_METRICS['Payout']
+                'score': payout_score,
+                'level': payout_level,
+                'benchmark': '70%-80%',
+                'weight': WEIGHTS['Payout'],
+                'description': '赚到的钱里有多少是真金白银发给股东的'
+            },
+            'LVR': {
+                'value': lvr,
+                'score': lvr_score,
+                'level': lvr_level,
+                'benchmark': '<50%',
+                'weight': 0,  # LVR 不直接参与加权，只做惩罚
+                'description': '房子值100万，银行借出去多少。>75%有系统性风险'
             }
         }
     }
@@ -332,35 +422,79 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
 # ==================== 测试入口 ====================
 
 if __name__ == '__main__':
-    # 简单测试
-    print("=== 银行计分卡测试 ===")
-    print(f"NIM @ 2.10 (目标): {calculate_nim_score(2.10)}")
-    print(f"NIM @ 1.70 (预警): {calculate_nim_score(1.70)}")
-    print(f"NIM @ 1.90 (中间): {calculate_nim_score(1.90)}")
-    print(f"NIM @ 2.50 (超出): {calculate_nim_score(2.50)}")
-    print(f"NIM @ 1.50 (低于): {calculate_nim_score(1.50)}")
-    print()
-    print(f"CTI @ 40% (目标): {calculate_cost_to_income_score(40.0)}")
-    print(f"CTI @ 50% (预警): {calculate_cost_to_income_score(50.0)}")
-    print(f"CTI @ 55% (超出): {calculate_cost_to_income_score(55.0)}")
-    print()
-    print(f"Payout @ 75% (最优): {calculate_payout_score(75.0)}")
-    print(f"Payout @ 50% (低位): {calculate_payout_score(50.0)}")
-    print(f"Payout @ 90% (高位): {calculate_payout_score(90.0)}")
-    print()
-    print("=== 全部满分测试 ===")
-    # 全部满分
-    test_data = {
+    print("=== 银行计分卡测试 (score_bank.md) ===\n")
+
+    # 测试各指标评分函数
+    print("--- NIM 评分 ---")
+    print(f"NIM @ 2.2%: {score_nim(2.2)}")
+    print(f"NIM @ 1.9%: {score_nim(1.9)}")
+    print(f"NIM @ 1.7%: {score_nim(1.7)}")
+    print(f"NIM @ 1.5%: {score_nim(1.5)}")
+    print(f"NIM @ None: {score_nim(None)}")
+
+    print("\n--- CET1 评分 ---")
+    print(f"CET1 @ 13%: {score_cet1(13.0)}")
+    print(f"CET1 @ 6.0%: {score_cet1(6.0)}")
+    print(f"CET1 @ 5.0%: {score_cet1(5.0)}")
+
+    print("\n--- Cost-to-Income 评分 ---")
+    print(f"CTI @ 40%: {score_cost_to_income(40.0)}")
+    print(f"CTI @ 45%: {score_cost_to_income(45.0)}")
+    print(f"CTI @ 50%: {score_cost_to_income(50.0)}")
+    print(f"CTI @ 56%: {score_cost_to_income(56.0)}")
+
+    print("\n--- ROE 评分 ---")
+    print(f"ROE @ 15%: {score_roe(15.0)}")
+    print(f"ROE @ 12%: {score_roe(12.0)}")
+    print(f"ROE @ 9%: {score_roe(9.0)}")
+    print(f"ROE @ 5%: {score_roe(5.0)}")
+
+    print("\n--- Credit Risk 评分 ---")
+    print(f"Credit @ 0.05%/100000: {score_credit_risk(50, 100000)}")
+    print(f"Credit @ 0.15%/100000: {score_credit_risk(150, 100000)}")
+    print(f"Credit @ 0.30%/100000: {score_credit_risk(300, 100000)}")
+    print(f"Credit @ 0.60%/100000: {score_credit_risk(600, 100000)}")
+
+    print("\n--- Payout 评分 ---")
+    print(f"Payout @ 72%: {score_payout(72.0)}")
+    print(f"Payout @ 80%: {score_payout(80.0)}")
+    print(f"Payout @ 60%: {score_payout(60.0)}")
+    print(f"Payout @ 96%: {score_payout(96.0)}")
+
+    print("\n--- LVR 评分 ---")
+    print(f"LVR @ 45%: {score_lvr(45.0)}")
+    print(f"LVR @ 55%: {score_lvr(55.0)}")
+    print(f"LVR @ 65%: {score_lvr(65.0)}")
+    print(f"LVR @ 80%: {score_lvr(80.0)}")
+
+    print("\n=== 权重 ===")
+    print(f"WEIGHTS: {WEIGHTS}")
+
+    # 测试完整计算
+    print("\n=== 完整评分测试 (满分案例) ===")
+    perfect_data = {
+        'ticker': 'TEST.AX',
+        'income_statement': {
+            'Net Interest Income': {'TTM': 5000},
+            'Provision for Loan Losses': {'TTM': 50},
+            'Revenue': {'TTM': 20000}
+        },
+        'balance_sheet': {
+            'Cash & Equivalents': {'TTM': 10000},
+            'Net Loans': {'TTM': 100000},
+            'Gross Loans': {'TTM': 100000}
+        },
         'ratios': {
-            'NIM': {'FY 2025': 2.10},
-            'CET1 Ratio': {'FY 2025': 13.0},
-            'Cost-to-Income Ratio': {'FY 2025': 40.0},
-            'ROE': {'FY 2025': 14.0},
-            'Bad Debt Ratio': {'FY 2025': 0.05},
-            'Payout Ratio': {'FY 2025': 75.0}
+            'CET1 Ratio': {'TTM': 13.0},
+            'Cost-to-Income Ratio': {'TTM': 40.0},
+            'Return on Equity (ROE)': {'TTM': 14.0},
+            'Payout Ratio': {'TTM': 72.0},
+            'LVR': {'TTM': 45.0}
         }
     }
-    result = calculate_banks_score(test_data)
+
+    result = calculate_banks_score(perfect_data)
     print(f"Total Score: {result['total_score']}")
+    print(f"LVR Penalty: {result['lvr_penalty']}")
     for metric, info in result['metrics'].items():
-        print(f"  {metric}: {info['value']} -> {info['score']:.2f}")
+        print(f"  {metric}: {info['value']} -> {info['score']} ({info['level']})")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-DeepSeek API Integration for Financial Data Filling
-当 stockanalysis.com 数据缺失时，使用 DeepSeek API 补充基础数据
+Google Gemini API Integration for Financial Data Filling
+当 stockanalysis.com 数据缺失时，使用 Gemini API 补充基础数据
 
 唯一的公开接口: fill_missing_data(json_data, industry)
 """
@@ -12,49 +12,29 @@ import re
 import requests
 from typing import Dict, Any, Optional, List
 
-DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
-DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions'
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent'
 
 
-# 行业特定的缺失指标 - 需要通过 DeepSeek 搜索的基础数据
+# 行业特定的缺失指标 - 需要通过 Gemini 搜索的基础数据
 INDUSTRY_MISSING_FIELDS = {
     'banks': [
         'Common Equity Tier 1 Capital',
         'Risk Weighted Assets',
         'Group Average LVR',
     ],
-    'materials': [
-        'EBITDA',
-        'Operating Income',
-        'EBIT',
-        'Free Cash Flow',
-        'Market Capitalization',
+    'materials': [       
+        'Annual Production Volume'
+        'Total Proved Reserves',
         'Sustaining Capex',
     ],
     'infrastructure': [
-        'EBITDA',
-        'Operating Income',
-        'EBIT',
-        'Interest Expense',
-        'Enterprise Value',
         'CPI Linkage',
         'Weighted Average Contract Expiry',
     ],
-    'healthcare': [
-        'EBITDA',
-        'Operating Income',
-        'Enterprise Value',
-    ],
-    'telecom': [
-        'EBITDA',
-        'Operating Income',
-        'Enterprise Value',
-    ],
     'consumer_staples': [
-        'EBITDA',
-        'Total Current Assets',
-        'Total Current Liabilities',
-        'Market Share',
+        "Total Industry Revenue"
+        'Forward EPS',
     ],
 }
 
@@ -65,7 +45,7 @@ def _get_search_fields(industry: str) -> List[str]:
 
 
 def _build_search_prompt(ticker: str, industry: str, fields: List[str]) -> str:
-    """构建 DeepSeek 查询 Prompt"""
+    """构建 Gemini 查询 Prompt"""
     industry_context = {
         'banks': '银行',
         'materials': '矿业/材料',
@@ -77,57 +57,90 @@ def _build_search_prompt(ticker: str, industry: str, fields: List[str]) -> str:
 
     fields_list = '\n'.join([f"- {field}" for field in fields])
 
-    prompt = f"""你是一个专业的金融数据分析师。你的任务是从澳大利亚证券交易所(ASX)上市公司的公开财务报告/年报中查找具体的底层财务数据。
+    prompt = f"""
+# Role
+你是一个专业的金融数据分析师，严谨且只输出机器可读的结构化数据。
 
+# Task
+Search the latest 2025/2026 financial reports for 
 股票代码: {ticker}
-行业: {industry} ({industry_context.get(industry, industry)})
+行业: {industry}
 
-请查找以下基础财务数据:
+Then, extract the following required data
+
+# Data Fields
 {fields_list}
 
-请以JSON格式返回，格式如下:
+# Banking Specific Search Guide
+1. Search for "{ticker} Latest Pillar 3 Disclosure" or "{ticker} Investor Discussion Pack FY2025".
+2. "Group Average LVR": Look for "Average LVR" or "LVR at origination" within the Residential/Home Lending portfolio section.
+3. "CET1" and "RWA": These are regulatory capital figures found in the Capital Adequacy table.
+
+
+# Constraints (必须严格遵守)
+1. 输出格式：必须是合法的 JSON 格式。
+2. 禁止行为：严禁输出任何开场白（如“好的”、“这是你要的数据”）、结尾总结或解释性文字。
+3. 缺失处理：如果数据不存在，对应 value 必须填 null。
+4. 单位:M=百万, B=十亿。
+5. 周期：仅限 "FY 2025" 或 "FY 2026"。
+
+# Output Example (必须模仿此格式)dd
 {{
-  "EBITDA": {{"value": 5000, "unit": "M", "period": "FY 2025"}},
-  "Free Cash Flow": {{"value": 2000, "unit": "M", "period": "FY 2025"}}
+  "EBITDA": {{"FY 2025" : 5000, "FY 2026" : 5500}},
+  "Free Cash Flow": {{"FY 2025" : null, "FY 2026" : null}},
 }}
 
-重要要求:
-1. 只返回JSON，不要其他文字说明
-2. 如果某个数据找不到，用null表示
-3. 数值单位说明: M=百万, B=十亿, 金额通常用M
-4. period格式: FY 2025 或 H1 2025
-5. 请务必从ASX {ticker}的年报或半年报中查找真实数据
-6. 确保JSON格式正确，可以被python json.loads()解析"""
+# Execution
+请立即从 ASX {ticker} 的年报中提取数据，不要输出任何 JSON 代码块标记之外的文字：
+    """
 
     return prompt
 
 
 def _call_api(prompt: str) -> Optional[str]:
-    """调用 DeepSeek API"""
-    if not DEEPSEEK_API_KEY:
-        print("Warning: DEEPSEEK_API_KEY not set")
+    """调用 Gemini API"""
+    if not GEMINI_API_KEY:
+        print("Warning: GEMINI_API_KEY not set")
         return None
 
+    url = f"{GEMINI_API_URL}?key={GEMINI_API_KEY}"
+
     headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {DEEPSEEK_API_KEY}'
+        'Content-Type': 'application/json'
     }
 
     data = {
-        'model': 'deepseek-chat',
-        'messages': [
-            {'role': 'user', 'content': prompt}
+        'contents': [
+            {
+                'parts': [
+                    {'text': prompt},
+                    {'text': "Please use Google Search to find specifically: 'NAB Full Year 2025 Investor Discussion Pack PDF' and 'NAB Pillar 3 Disclosure September 2025'."}
+                ]
+            }
         ],
-        'temperature': 0.3
+        "tools": [{
+            "google_search": {}
+        }],
+        'generationConfig': {
+            'temperature': 0.0,
+            'maxOutputTokens': 2048,
+        }
     }
 
     try:
-        response = requests.post(DEEPSEEK_API_URL, headers=headers, json=data, timeout=60)
+        response = requests.post(url, headers=headers, json=data, timeout=60)
         response.raise_for_status()
         result = response.json()
-        return result['choices'][0]['message']['content']
+
+        # Gemini 返回格式: result['candidates'][0]['content']['parts'][0]['text']
+        if 'candidates' in result and len(result['candidates']) > 0:
+            candidate = result['candidates'][0]
+            if 'content' in candidate and 'parts' in candidate['content']:
+                return candidate['content']['parts'][0].get('text')
+
+        return None
     except Exception as e:
-        print(f"Error calling DeepSeek API: {e}")
+        print(f"Error calling Gemini API: {e}")
         return None
 
 
@@ -136,6 +149,7 @@ def _parse_response(response: str) -> Dict[str, Any]:
     if not response:
         return {}
 
+    print(f"Raw API response: {response}")
     # 尝试提取 JSON 块
     json_match = re.search(r'\{[\s\S]*\}', response)
     if json_match:
@@ -193,7 +207,7 @@ def fill_missing_data(json_data: Dict, industry: str) -> Dict:
     填充缺失的基础数据 - 唯一的公开接口
 
     1. 识别 json_data 中缺失的字段
-    2. 调用 DeepSeek API 搜索这些字段
+    2. 调用 Gemini API 搜索这些字段
     3. 将搜索结果填充到 json_data
 
     Args:
@@ -224,34 +238,25 @@ def fill_missing_data(json_data: Dict, industry: str) -> Dict:
     # 构建 Prompt 并调用 API
     prompt = _build_search_prompt(ticker, industry, missing_fields)
     response = _call_api(prompt)
-
+    print(f"{ticker} prompt: {prompt}")
     if not response:
-        print(f"{ticker}: Failed to get response from DeepSeek API")
+        print(f"{ticker}: Failed to get response from Gemini API")
         return json_data
 
     # 解析响应
     filled_data = _parse_response(response)
+    print(f"{ticker}: Filling data from Gemini API: {filled_data}")
 
     if not filled_data:
         print(f"{ticker}: No valid data from API")
         return json_data
 
     # 将搜索结果填充到 json_data
-    # 默认添加到 ratios，用户可调整
-    if 'ratios' not in json_data:
-        json_data['ratios'] = {}
+    # 默认添加到 extra
+    if 'extra' not in json_data:
+        json_data['extra'] = {}
 
-    for field, value in filled_data.items():
-        if value is None:
-            continue
-
-        actual_value = value.get('value') if isinstance(value, dict) else value
-        if actual_value is not None:
-            json_data['ratios'][field] = {
-                'Current': actual_value,
-                'source': 'deepseek-api'
-            }
-            print(f"  Filled {field}: {actual_value}")
+    json_data['extra'] = filled_data
 
     return json_data
 
@@ -260,20 +265,20 @@ def main():
     """测试入口"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='使用 DeepSeek API 补充财务数据')
+    parser = argparse.ArgumentParser(description='使用 Gemini API 补充财务数据')
     parser.add_argument('ticker', help='股票代码 (如 CBA)')
     parser.add_argument('--industry', default='banks', help='行业类型')
-    parser.add_argument('--api-key', help='DeepSeek API Key (或设置 DEEPSEEK_API_KEY 环境变量)')
+    parser.add_argument('--api-key', help='Gemini API Key (或设置 GEMINI_API_KEY 环境变量)')
 
     args = parser.parse_args()
 
     # 设置 API Key
-    global DEEPSEEK_API_KEY
+    global GEMINI_API_KEY
     if args.api_key:
-        DEEPSEEK_API_KEY = args.api_key
+        GEMINI_API_KEY = args.api_key
 
-    if not DEEPSEEK_API_KEY:
-        print("Error: Please set DEEPSEEK_API_KEY environment variable or use --api-key")
+    if not GEMINI_API_KEY:
+        print("Error: Please set GEMINI_API_KEY environment variable or use --api-key")
         return
 
     # 构建测试数据

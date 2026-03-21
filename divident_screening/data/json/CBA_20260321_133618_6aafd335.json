@@ -1,6 +1,10 @@
 {
   "ticker": "CBA.AX",
   "source": "stockanalysis.com",
+  "industry": {
+    "industry": "Banks - Diversified",
+    "sector": "Financials"
+  },
   "income_statement": {
     "Interest Income on Loans": {
       "TTM": 61207.0,
@@ -1003,7 +1007,7 @@
   },
   "ratios": {
     "Market Capitalization": {
-      "Current": 290548.0,
+      "Current": 293692.0,
       "FY 2025": 308902.0,
       "FY 2024": 212998.0,
       "FY 2023": 167927.0,
@@ -1011,7 +1015,7 @@
       "FY 2021": 177004.0
     },
     "Market Cap Growth": {
-      "Current": 10.59,
+      "Current": 18.57,
       "FY 2025": 45.02,
       "FY 2024": 26.84,
       "FY 2023": 9.29,
@@ -1019,7 +1023,7 @@
       "FY 2021": 44.1
     },
     "Last Close Price": {
-      "Current": 173.76,
+      "Current": 175.64,
       "FY 2025": 179.54,
       "FY 2024": 119.89,
       "FY 2023": 90.49,
@@ -1027,7 +1031,7 @@
       "FY 2021": 83.26
     },
     "PE Ratio": {
-      "Current": 27.97,
+      "Current": 28.27,
       "FY 2025": 30.54,
       "FY 2024": 22.67,
       "FY 2023": 16.8,
@@ -1035,7 +1039,7 @@
       "FY 2021": 17.39
     },
     "PS Ratio": {
-      "Current": 10.21,
+      "Current": 10.32,
       "FY 2025": 11.21,
       "FY 2024": 8.15,
       "FY 2023": 6.38,
@@ -1043,7 +1047,7 @@
       "FY 2021": 7.48
     },
     "PB Ratio": {
-      "Current": 3.76,
+      "Current": 3.8,
       "FY 2025": 3.92,
       "FY 2024": 2.91,
       "FY 2023": 2.34,
@@ -1091,7 +1095,7 @@
       "FY 2021": 0.84
     },
     "Earnings Yield": {
-      "Current": 3.56,
+      "Current": 3.52,
       "FY 2025": 3.28,
       "FY 2024": 4.41,
       "FY 2023": 5.95,
@@ -1099,7 +1103,7 @@
       "FY 2021": 5.75
     },
     "FCF Yield": {
-      "Current": -15.89,
+      "Current": -15.72,
       "FY 2025": -19.67,
       "FY 2024": -22.8,
       "FY 2023": -28.26,
@@ -1107,7 +1111,7 @@
       "FY 2021": -11.36
     },
     "Dividend Yield": {
-      "Current": 2.88,
+      "Current": 2.82,
       "FY 2025": 2.7,
       "FY 2024": 3.88,
       "FY 2023": 4.97,
@@ -1131,12 +1135,26 @@
       "FY 2021": -2.06
     },
     "Total Shareholder Return": {
-      "Current": 5.9,
+      "Current": 5.8,
       "FY 2025": 8.81,
       "FY 2024": 4.77,
       "FY 2023": 6.77,
       "FY 2022": 10.14,
       "FY 2021": 2.15
+    }
+  },
+  "extra": {
+    "Common Equity Tier 1 Capital": {
+      "FY 2025": 30800,
+      "FY 2026": null
+    },
+    "Risk Weighted Assets": {
+      "FY 2025": 447000,
+      "FY 2026": null
+    },
+    "Group Average LVR": {
+      "FY 2025": 0.52,
+      "FY 2026": null
     }
   }
 }

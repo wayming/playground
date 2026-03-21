@@ -1,6 +1,10 @@
 {
   "ticker": "NAB.AX",
   "source": "stockanalysis.com",
+  "industry": {
+    "industry": "Banks - Diversified",
+    "sector": "Financials"
+  },
   "income_statement": {
     "Interest Income on Loans": {
       "FY 2025": 49870.0,
@@ -898,7 +902,7 @@
   },
   "ratios": {
     "Market Capitalization": {
-      "Current": 144163.0,
+      "Current": 139450.0,
       "FY 2025": 134896.0,
       "FY 2024": 114494.0,
       "FY 2023": 90729.0,
@@ -906,7 +910,7 @@
       "FY 2021": 91164.0
     },
     "Market Cap Growth": {
-      "Current": 33.55,
+      "Current": 33.99,
       "FY 2025": 17.82,
       "FY 2024": 26.19,
       "FY 2023": 0.09,
@@ -914,7 +918,7 @@
       "FY 2021": 56.37
     },
     "Last Close Price": {
-      "Current": 47.11,
+      "Current": 45.57,
       "FY 2025": 43.28,
       "FY 2024": 35.0,
       "FY 2023": 25.81,
@@ -922,7 +926,7 @@
       "FY 2021": 22.31
     },
     "PE Ratio": {
-      "Current": 20.36,
+      "Current": 19.69,
       "FY 2025": 19.96,
       "FY 2024": 16.45,
       "FY 2023": 12.24,
@@ -930,7 +934,7 @@
       "FY 2021": 14.35
     },
     "PS Ratio": {
-      "Current": 7.04,
+      "Current": 6.81,
       "FY 2025": 6.73,
       "FY 2024": 5.76,
       "FY 2023": 4.58,
@@ -938,7 +942,7 @@
       "FY 2021": 5.38
     },
     "PB Ratio": {
-      "Current": 2.27,
+      "Current": 2.19,
       "FY 2025": 2.12,
       "FY 2024": 1.84,
       "FY 2023": 1.48,
@@ -983,7 +987,7 @@
       "FY 2021": 0.72
     },
     "Earnings Yield": {
-      "Current": 4.89,
+      "Current": 5.06,
       "FY 2025": 5.01,
       "FY 2024": 6.08,
       "FY 2023": 8.17,
@@ -998,7 +1002,7 @@
       "FY 2021": -61.48
     },
     "Dividend Yield": {
-      "Current": 3.61,
+      "Current": 3.65,
       "FY 2025": 3.93,
       "FY 2024": 4.83,
       "FY 2023": 6.47,
@@ -1021,12 +1025,23 @@
       "FY 2021": -6.21
     },
     "Total Shareholder Return": {
-      "Current": 10.76,
+      "Current": 10.74,
       "FY 2025": 8.82,
       "FY 2024": 8.09,
       "FY 2023": 8.23,
       "FY 2022": 8.36,
       "FY 2021": -0.52
+    }
+  },
+  "extra": {
+    "Common Equity Tier 1 Capital": {
+      "FY 2025": 56380
+    },
+    "Risk Weighted Assets": {
+      "FY 2025": 375000
+    },
+    "Group Average LVR": {
+      "FY 2025": null
     }
   }
 }

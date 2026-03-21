@@ -17,6 +17,44 @@ os.makedirs(os.path.join(DATA_DIR, 'json'), exist_ok=True)
 from asx_scraper import scrape_stock
 from asx_scorer import ScoringSystem
 
+# 内存缓存: symbol -> (timestamp, score_result)
+_score_cache = {}
+_cache_dir = os.path.join(DATA_DIR, 'cache')
+os.makedirs(_cache_dir, exist_ok=True)
+
+def _get_cache_path(symbol: str) -> str:
+    return os.path.join(_cache_dir, f"{symbol}.json")
+
+def _get_file_timestamp(json_file: str) -> float:
+    """获取文件修改时间"""
+    return os.path.getmtime(json_file)
+
+def _load_cached_score(symbol: str, json_file: str) -> dict | None:
+    """加载缓存的评分，如果缓存过期则返回 None"""
+    cache_path = _get_cache_path(symbol)
+    if not os.path.exists(cache_path):
+        return None
+
+    try:
+        # 检查 JSON 文件是否比缓存更新
+        json_mtime = _get_file_timestamp(json_file)
+        cache_mtime = _get_file_timestamp(cache_path)
+
+        if json_mtime > cache_mtime:
+            # 数据文件更新了，需要重新计算
+            return None
+
+        with open(cache_path, 'r') as f:
+            return json.load(f)
+    except:
+        return None
+
+def _save_cached_score(symbol: str, score_result: dict):
+    """保存评分到缓存"""
+    cache_path = _get_cache_path(symbol)
+    with open(cache_path, 'w') as f:
+        json.dump(score_result, f)
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -97,6 +135,16 @@ def analyze():
             'json_file': json_file
         }
 
+        # 更新缓存
+        cache_data = {
+            'symbol': symbol,
+            'industry': industry,
+            'score': response['score'],
+            'details': score_result.details,
+            'timestamp': timestamp
+        }
+        _save_cached_score(symbol, cache_data)
+
         return jsonify(response)
 
     except Exception as e:
@@ -104,7 +152,7 @@ def analyze():
 
 @app.route('/api/history')
 def history():
-    """List all previously analyzed stocks with scores - 优化版本，缓存分数"""
+    """List all previously analyzed stocks with scores - 使用缓存避免重复计算"""
     json_dir = os.path.join(DATA_DIR, 'json')
     files = sorted(os.listdir(json_dir), reverse=True) if os.path.exists(json_dir) else []
 
@@ -119,17 +167,27 @@ def history():
                 if symbol not in latest:
                     latest[symbol] = f
 
-    # For each stock, read the JSON and compute score
+    # For each stock, read from cache or compute score
     result = []
     for symbol, f in latest.items():
+        json_path = os.path.join(json_dir, f)
+
+        # 尝试从缓存加载
+        cached = _load_cached_score(symbol, json_path)
+        if cached:
+            result.append(cached)
+            continue
+
+        # 缓存不存在或过期，需要重新计算
         try:
-            with open(os.path.join(json_dir, f), 'r') as fp:
+            with open(json_path, 'r') as fp:
                 data = json.load(fp)
             # Auto-detect industry from scraped data
             industry = detect_industry(symbol, data)
             scorer = ScoringSystem(data)
             score_result = scorer.score(industry)
-            result.append({
+
+            score_data = {
                 'symbol': symbol,
                 'industry': industry,
                 'score': {
@@ -139,7 +197,11 @@ def history():
                 },
                 'details': score_result.details,
                 'timestamp': f.split('_')[1] if len(f.split('_')) > 1 else 'unknown'
-            })
+            }
+
+            # 保存到缓存
+            _save_cached_score(symbol, score_data)
+            result.append(score_data)
         except Exception as e:
             print(f"Error processing {symbol}: {e}")
 

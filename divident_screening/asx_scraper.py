@@ -13,13 +13,12 @@ import os
 import argparse
 from typing import Dict, Any, Optional
 
-# 导入 DeepSeek 数据补充模块
+# 导入 Gemini 数据补充模块
 try:
-    from deepseek_filler import fill_missing_data
-    HAS_DEEPSEEK = True
+    from gemini_filler import fill_missing_data as gemini_fill
 except ImportError:
-    HAS_DEEPSEEK = False
-    print("Warning: deepseek_filler not available, skipping AI data fill")
+    gemini_fill = None
+    print("Warning: gemini_filler not available")
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -229,22 +228,22 @@ def scrape_stock(ticker: str) -> Dict[str, Any]:
     if soup:
         result['ratios'] = parse_ratio_table(soup)
 
-    # 5. 尝试使用 DeepSeek API 补充缺失数据
-    if HAS_DEEPSEEK and os.environ.get('DEEPSEEK_API_KEY'):
-        industry_info = result.get('industry', {})
-        industry_name = industry_info.get('industry', '')
-        sector = industry_info.get('sector', '')
+    # 5. 尝试使用 Gemini API 补充缺失数据
+    industry_info = result.get('industry', {})
+    industry_name = industry_info.get('industry', '')
+    sector = industry_info.get('sector', '')
 
-        # 根据行业名称映射到内部类型
-        internal_industry = map_industry_for_filler(industry_name, sector)
-        if internal_industry:
-            result = fill_missing_data(result, internal_industry)
+    # 根据行业名称映射到内部类型
+    internal_industry = map_industry_for_filler(industry_name, sector)
+
+    if gemini_fill and os.environ.get('GEMINI_API_KEY') and internal_industry:
+        result = gemini_fill(result, internal_industry)
 
     return result
 
 
 def map_industry_for_filler(industry_name: str, sector: str) -> Optional[str]:
-    """将行业名称映射到内部行业类型 (用于 DeepSeek 数据补充)"""
+    """将行业名称映射到内部行业类型 (用于 Gemini 数据补充)"""
     text = f"{industry_name} {sector}".lower()
 
     if any(kw in text for kw in ['bank', 'financial']):
@@ -264,24 +263,28 @@ def map_industry_for_filler(industry_name: str, sector: str) -> Optional[str]:
 
 
 def main():
+    global gemini_fill
+    
     parser = argparse.ArgumentParser(description='抓取ASX股票财务数据')
     parser.add_argument('ticker', help='股票代码 (如 FMG)')
     parser.add_argument('-o', '--output', help='输出文件路径 (JSON格式)')
     parser.add_argument('-p', '--pretty', action='store_true', help='格式化输出JSON')
-    parser.add_argument('--no-ai', action='store_true', help='禁用 DeepSeek AI 数据补充')
+    parser.add_argument('--no-ai', action='store_true', help='禁用所有 AI 数据补充')
 
     args = parser.parse_args()
 
-    # 如果设置了 --no-ai，临时禁用 AI
+    # 如果设置了 --no-ai，禁用 AI
     if args.no_ai:
-        global HAS_DEEPSEEK
-        HAS_DEEPSEEK = False
+        # 临时清除环境变量，让 scrape_stock 中的检查失败
+        os.environ.pop('GEMINI_API_KEY', None)
 
     print(f"抓取 {args.ticker} 的财务数据...")
-    if HAS_DEEPSEEK and os.environ.get('DEEPSEEK_API_KEY'):
-        print("DeepSeek AI 数据补充: 启用")
+
+    # 显示 AI 补充状态
+    if gemini_fill and os.environ.get('GEMINI_API_KEY'):
+        print("Gemini AI 数据补充: 启用")
     else:
-        print("DeepSeek AI 数据补充: 禁用 (需要设置 DEEPSEEK_API_KEY)")
+        print("Gemini AI 数据补充: 禁用 (需要设置 GEMINI_API_KEY)")
 
     data = scrape_stock(args.ticker)
 
