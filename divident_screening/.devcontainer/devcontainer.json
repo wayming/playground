@@ -1,2 +1,13 @@
 {
+"name": "My AI Development Environment",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11", 
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "saoudrizwan.claude-dev", 
+        "continue.continue"
+      ]
+    }
+  },
+  "remoteUser": "vscode"
 }
