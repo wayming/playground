@@ -9,11 +9,11 @@
             "module": "backtesting.dividend_rebalance",
 
             "args": [
-                "-start", "2005",
-                "-symbols", "QAN.AX FMG.AX WOW.AX",
-                "-output", "tmp2",
-                "-d",
-                "-rebalance"
+                "-start", "2015",
+                "-symbols", "APA.AX",
+                "-output", "output_dbg",
+                //"-d",
+                //"-rebalance"
             ],
 
             "console": "integratedTerminal",

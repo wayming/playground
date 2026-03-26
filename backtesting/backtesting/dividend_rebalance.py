@@ -48,14 +48,17 @@ def subtract_one_year(dt):
         return first_of_next_month - datetime.timedelta(days=1)
 
 
-def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fund: int, years: str, config: Portfolio_Conifg = None, enable_rebalance: bool = True):
+def back_testing_yh_finance(start_backtest_date:datetime.datetime, symbols:str, initial_fund: int, years: str, config: Portfolio_Conifg = None, enable_rebalance: bool = True):
 
     # Populating dates
-    warm_up_start_backtest_date = datetime.datetime(star_date.year -1, star_date.month, star_date.day)
-    end_backtest_date = datetime.datetime(star_date.year + int(years.removesuffix('y')), star_date.month, star_date.day)
-    start_of_last_backtest_year = datetime.datetime(end_backtest_date.year - 1, 1, 1)
     today = datetime.datetime.today()
     last_day_of_last_year = datetime.datetime(today.year - 1, 12, 31)
+
+    warm_up_start_backtest_date = datetime.datetime(start_backtest_date.year -1, start_backtest_date.month, start_backtest_date.day)
+    end_backtest_date = datetime.datetime(start_backtest_date.year + int(years.removesuffix('y')), start_backtest_date.month, start_backtest_date.day)
+    if end_backtest_date > datetime.datetime.today():
+        end_backtest_date = datetime.datetime.today()
+    start_of_end_backtest_year = datetime.datetime(end_backtest_date.year-1, 1, 1) # Includes the end day of the last back test year
 
     stock_data = yfinance.Tickers(symbols)
     hist = stock_data.history(start=warm_up_start_backtest_date, end=last_day_of_last_year, interval='1d', auto_adjust=False).fillna(0)
@@ -69,7 +72,7 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
     hist = pd.concat([hist, ma250_all_tickers, yield_all_tickers, rolling_div_sum_all_tickers], axis=1)
     logging.info("\n" + hist[["Close", "Dividends", "MA250", "Yield", "RollingDivSum250"]].to_string())
 
-    end_of_years_market_data = hist[["Close", "Yield"]].ffill().loc[start_of_last_backtest_year:].resample('YE').last()
+    end_of_years_market_data = hist[["Close", "Yield"]].ffill().loc[start_of_end_backtest_year:].resample('YE').last()
     end_of_years_makert_data_map = {}
     for date, row in end_of_years_market_data.iterrows():
         end_of_years_makert_data_map[date] = {
@@ -87,7 +90,7 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
         config = Portfolio_Conifg()
     config.initial_fund = initial_fund
     portfolio = Portfolio(config)
-    portfolio.add_cash(star_date, initial_fund)
+    portfolio.add_cash(start_backtest_date, initial_fund)
     portfolio.add_balance_strategy(AverageDownByMA250Strategy(stock_data.symbols))
     portfolio.add_balance_strategy(TakeProfitPercentageStrategy(config.take_profit_ratio, config.take_profit_sell_ratio))
 
@@ -95,7 +98,7 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
     history = []
     prev_equity_total = None
 
-    for date, row in hist[["Close", "Dividends", "MA250", "Yield"]].loc[star_date:end_backtest_date].iterrows():
+    for date, row in hist[["Close", "Dividends", "MA250", "Yield"]].loc[start_backtest_date:end_backtest_date].iterrows():
 
         market_data_map = (
             pd.DataFrame({
@@ -158,12 +161,14 @@ def back_testing_yh_finance(star_date:datetime.datetime, symbols:str, initial_fu
             "exposure": position_value / equity_total if equity_total > 0 else 0,
             "drawdown": drawdown
         })
-        prev_equity_total = max(prev_equity_total, equity_total)  # Historical high for drawdown calculation
-
+        # prev_equity_total = max(prev_equity_total, equity_total)  # Historical high for drawdown calculation
+    logging.info(f"Back Testing Period {start_backtest_date} to {end_backtest_date}")
     portfolio.show()
 
     # Populate end stats
-    portfolio.stats(end_of_years_makert_data_map)
+    stats = portfolio.stats(end_of_years_makert_data_map)
+    stats["annualized_return"] = (1 + stats["cumulative_return"])**(1 / int(years.removesuffix('y'))) - 1
+    logging.info(f"\n{pprint.pformat(stats)}")
 
     return pd.DataFrame(history).set_index("date"), portfolio
 

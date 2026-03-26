@@ -21,8 +21,8 @@ GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 # 行业特定的缺失指标 - 需要通过 Gemini 搜索的基础数据
 INDUSTRY_MISSING_FIELDS = {
     'banks': [
-        # 'Common Equity Tier 1 Capital',
-        # 'Risk Weighted Assets',
+        'Common Equity Tier 1 Capital',
+        'Risk Weighted Assets',
         # 'Group Average LVR',
         'Dynamic LVR'
     ],

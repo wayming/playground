@@ -182,8 +182,6 @@ class Portfolio:
     def stats(self, market_data:dict):
         result_stats = {}
         market_data_iter = iter(market_data.keys())
-        if not (end_market_data := next(market_data_iter, None)):
-            raise ValueError("No market data provided")
 
         first = True
         while date := next(market_data_iter, None):
@@ -201,9 +199,7 @@ class Portfolio:
 
         result_stats["total_invest_cost"] = self.total_invest
         result_stats["total_dividend_received"] = sum(holding.total_dividend_received for _, holding in self.stock_holding.items())
-        result_stats["cumulative_return"] = str(round(100 * (result_stats["position_value_end_year"] - result_stats["total_invest_cost"])/result_stats["total_invest_cost"], 2)) + "%"
-
-        logging.info(f"\n{pprint.pformat(result_stats)}")
+        result_stats["cumulative_return"] = round((result_stats["position_value_end_year"] - result_stats["total_invest_cost"])/result_stats["total_invest_cost"], 2)
         return result_stats
 
     def show(self):
