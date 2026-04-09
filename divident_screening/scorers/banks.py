@@ -422,79 +422,31 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
 # ==================== 测试入口 ====================
 
 if __name__ == '__main__':
-    print("=== 银行计分卡测试 (score_bank.md) ===\n")
+    import argparse
+    import json
 
-    # 测试各指标评分函数
-    print("--- NIM 评分 ---")
-    print(f"NIM @ 2.2%: {score_nim(2.2)}")
-    print(f"NIM @ 1.9%: {score_nim(1.9)}")
-    print(f"NIM @ 1.7%: {score_nim(1.7)}")
-    print(f"NIM @ 1.5%: {score_nim(1.5)}")
-    print(f"NIM @ None: {score_nim(None)}")
+    parser = argparse.ArgumentParser(description='银行计分卡 - 计算银行评分')
+    parser.add_argument('json_file', help='JSON 文件路径')
+    args = parser.parse_args()
 
-    print("\n--- CET1 评分 ---")
-    print(f"CET1 @ 13%: {score_cet1(13.0)}")
-    print(f"CET1 @ 6.0%: {score_cet1(6.0)}")
-    print(f"CET1 @ 5.0%: {score_cet1(5.0)}")
+    # 读取 JSON 文件
+    with open(args.json_file, 'r', encoding='utf-8') as f:
+        data = json.load(f)
 
-    print("\n--- Cost-to-Income 评分 ---")
-    print(f"CTI @ 40%: {score_cost_to_income(40.0)}")
-    print(f"CTI @ 45%: {score_cost_to_income(45.0)}")
-    print(f"CTI @ 50%: {score_cost_to_income(50.0)}")
-    print(f"CTI @ 56%: {score_cost_to_income(56.0)}")
+    # 计算评分
+    result = calculate_banks_score(data)
 
-    print("\n--- ROE 评分 ---")
-    print(f"ROE @ 15%: {score_roe(15.0)}")
-    print(f"ROE @ 12%: {score_roe(12.0)}")
-    print(f"ROE @ 9%: {score_roe(9.0)}")
-    print(f"ROE @ 5%: {score_roe(5.0)}")
+    # 打印结果
+    print(f"\n{'='*50}")
+    print(f"股票: {result['ticker']}")
+    print(f"总分: {result['total_score']}/10.0")
+    if result['lvr_penalty']:
+        print("⚠️  LVR > 75% 惩罚已触发 (总分折半)")
+    print(f"{'='*50}")
 
-    print("\n--- Credit Risk 评分 ---")
-    print(f"Credit @ 0.05%/100000: {score_credit_risk(50, 100000)}")
-    print(f"Credit @ 0.15%/100000: {score_credit_risk(150, 100000)}")
-    print(f"Credit @ 0.30%/100000: {score_credit_risk(300, 100000)}")
-    print(f"Credit @ 0.60%/100000: {score_credit_risk(600, 100000)}")
-
-    print("\n--- Payout 评分 ---")
-    print(f"Payout @ 72%: {score_payout(72.0)}")
-    print(f"Payout @ 80%: {score_payout(80.0)}")
-    print(f"Payout @ 60%: {score_payout(60.0)}")
-    print(f"Payout @ 96%: {score_payout(96.0)}")
-
-    print("\n--- LVR 评分 ---")
-    print(f"LVR @ 45%: {score_lvr(45.0)}")
-    print(f"LVR @ 55%: {score_lvr(55.0)}")
-    print(f"LVR @ 65%: {score_lvr(65.0)}")
-    print(f"LVR @ 80%: {score_lvr(80.0)}")
-
-    print("\n=== 权重 ===")
-    print(f"WEIGHTS: {WEIGHTS}")
-
-    # 测试完整计算
-    print("\n=== 完整评分测试 (满分案例) ===")
-    perfect_data = {
-        'ticker': 'TEST.AX',
-        'income_statement': {
-            'Net Interest Income': {'TTM': 5000},
-            'Provision for Loan Losses': {'TTM': 50},
-            'Revenue': {'TTM': 20000}
-        },
-        'balance_sheet': {
-            'Cash & Equivalents': {'TTM': 10000},
-            'Net Loans': {'TTM': 100000},
-            'Gross Loans': {'TTM': 100000}
-        },
-        'ratios': {
-            'CET1 Ratio': {'TTM': 13.0},
-            'Cost-to-Income Ratio': {'TTM': 40.0},
-            'Return on Equity (ROE)': {'TTM': 14.0},
-            'Payout Ratio': {'TTM': 72.0},
-            'LVR': {'TTM': 45.0}
-        }
-    }
-
-    result = calculate_banks_score(perfect_data)
-    print(f"Total Score: {result['total_score']}")
-    print(f"LVR Penalty: {result['lvr_penalty']}")
     for metric, info in result['metrics'].items():
-        print(f"  {metric}: {info['value']} -> {info['score']} ({info['level']})")
+        value_str = f"{info['value']:.2f}" if info['value'] is not None else "N/A"
+        print(f"{metric:20s}: {value_str:>10s} -> {info['score']:.1f}/10 ({info['level']})")
+        if info['value'] is not None:
+            print(f"  基准: {info['benchmark']}")
+    print(f"{'='*50}")

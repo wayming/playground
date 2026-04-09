@@ -13,6 +13,9 @@ import os
 import argparse
 from typing import Dict, Any, Optional
 
+# 导入日志模块
+from logger import logger, set_ticker
+
 # 导入 Gemini 数据补充模块
 try:
     from gemini_filler import fill_missing_data as gemini_fill
@@ -188,6 +191,10 @@ def scrape_stock(ticker: str) -> Dict[str, Any]:
     ticker = ticker.upper().replace('.AX', '')
     url_ticker = ticker
 
+    # 设置 ticker 用于日志
+    set_ticker(ticker)
+    logger.info(f"Starting scrape for {ticker}")
+
     result = {
         'ticker': f"{ticker}.AX",
         'source': 'stockanalysis.com',
@@ -203,30 +210,35 @@ def scrape_stock(ticker: str) -> Dict[str, Any]:
     soup = fetch_page(url)
     if soup:
         result['industry'] = parse_industry(soup)
+        logger.info(f"Scraped industry info: {result['industry']}")
 
     # 1. 损益表
     url = f"{BASE_URL}/{url_ticker}/financials/"
     soup = fetch_page(url)
     if soup:
         result['income_statement'] = parse_financial_table(soup)
+        logger.info(f"Scraped income_statement: {len(result['income_statement'])} items")
 
     # 2. 资产负债表
     url = f"{BASE_URL}/{url_ticker}/financials/balance-sheet/"
     soup = fetch_page(url)
     if soup:
         result['balance_sheet'] = parse_financial_table(soup)
+        logger.info(f"Scraped balance_sheet: {len(result['balance_sheet'])} items")
 
     # 3. 现金流表
     url = f"{BASE_URL}/{url_ticker}/financials/cash-flow-statement/"
     soup = fetch_page(url)
     if soup:
         result['cash_flow'] = parse_financial_table(soup)
+        logger.info(f"Scraped cash_flow: {len(result['cash_flow'])} items")
 
     # 4. 财务比率
     url = f"{BASE_URL}/{url_ticker}/financials/ratios/"
     soup = fetch_page(url)
     if soup:
         result['ratios'] = parse_ratio_table(soup)
+        logger.info(f"Scraped ratios: {len(result['ratios'])} items")
 
     # 5. 尝试使用 Gemini API 补充缺失数据
     industry_info = result.get('industry', {})
@@ -237,8 +249,11 @@ def scrape_stock(ticker: str) -> Dict[str, Any]:
     internal_industry = map_industry_for_filler(industry_name, sector)
 
     if gemini_fill and os.environ.get('GEMINI_API_KEY') and internal_industry:
+        logger.info(f"Calling Gemini to fill missing data for {ticker}")
         result = gemini_fill(result, internal_industry)
+        logger.info(f"Gemini fill completed for {ticker}")
 
+    logger.info(f"Scraping completed for {ticker}")
     return result
 
 
@@ -264,14 +279,22 @@ def map_industry_for_filler(industry_name: str, sector: str) -> Optional[str]:
 
 def main():
     global gemini_fill
-    
+
     parser = argparse.ArgumentParser(description='抓取ASX股票财务数据')
     parser.add_argument('ticker', help='股票代码 (如 FMG)')
     parser.add_argument('-o', '--output', help='输出文件路径 (JSON格式)')
     parser.add_argument('-p', '--pretty', action='store_true', help='格式化输出JSON')
     parser.add_argument('--no-ai', action='store_true', help='禁用所有 AI 数据补充')
+    parser.add_argument('-d', '--debug', action='store_true', help='开启调试日志')
 
     args = parser.parse_args()
+
+    # 如果设置了 --debug，开启调试日志
+    if args.debug:
+        import logging
+        logger.setLevel(logging.DEBUG)
+        for handler in logger.handlers:
+            handler.setLevel(logging.DEBUG)
 
     # 如果设置了 --no-ai，禁用 AI
     if args.no_ai:

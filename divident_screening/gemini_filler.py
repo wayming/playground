@@ -16,15 +16,18 @@ from google.genai import types
 
 from typing import Dict, Any, Optional, List
 
+# 导入日志模块
+from logger import logger, set_ticker
+
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 # 行业特定的缺失指标 - 需要通过 Gemini 搜索的基础数据
 INDUSTRY_MISSING_FIELDS = {
     'banks': [
+        'CET1 Ratio',
         'Common Equity Tier 1 Capital',
         'Risk Weighted Assets',
-        # 'Group Average LVR',
-        'Dynamic LVR'
+        'Group Average LVR',
     ],
     'materials': [
         'Annual Production Volume',
@@ -107,7 +110,7 @@ Then, extract the following required data:
 
 # Constraints
 1. 缺失处理：如果数据不存在，对应 value 必须填 null。
-2. 单位: M=百万, B=十亿。对于百分比字段，输出数值(如 45.5 表示 45.5%)。
+2. 单位: 转换成百万为单位。对于百分比字段，输出数值(如 45.5 表示 45.5%)。
 3. 优先提取 "Full Year" 的数值,如果没有full year,则提取half year。
 4. 如果有多个时期的记录，返回所有记录。
 
@@ -122,8 +125,10 @@ Then, extract the following required data:
 第三步：如果找到多个时期的记录，先提取所有时间段的数据，并且返回所有记录。
 第四步：仅以 JSON 格式输出最终数值，确保数值准确。
 
-    """
+# Hints
+{_get_search_hint(field)}
 
+    """
     return prompt
 
 
@@ -136,25 +141,21 @@ def _call_api(prompt: str, field: str) -> Optional[str]:
         field: 查询的字段名（用于调试）
     """
     if not GEMINI_API_KEY:
-        print(f"Warning: GEMINI_API_KEY not set")
+        logger.warning("GEMINI_API_KEY not set")
         return None
 
     # 确保客户端已配置
     client = genai.Client(api_key=GEMINI_API_KEY)
 
-
     try:
-        # 构建完整的 prompt，包含搜索提示
-        full_prompt = f"{prompt}\n\n{_get_search_hint(field)}"
-
         # 发起对话（支持 Google Search 工具调用）
         response = client.models.generate_content(
             model=MODEL_NAME,
-            contents=full_prompt,
+            contents=prompt,
             config=types.GenerateContentConfig(
                 tools=[
                     types.Tool(
-                        google_search=types.GoogleSearch() 
+                        google_search=types.GoogleSearch()
                     )
                 ],
                 response_mime_type="application/json"
@@ -164,10 +165,10 @@ def _call_api(prompt: str, field: str) -> Optional[str]:
         try:
             return response.text
         except Exception as e:
-            print(f"Error extracting text from response for field {field}: {e}")
+            logger.error(f"Error extracting text from response for field {field}: {e}")
             return None
     except Exception as e:
-        print(f"Error calling Gemini API for field {field}: {e}")
+        logger.error(f"Error calling Gemini API for field {field}: {e}")
         return None
 
 
@@ -176,18 +177,18 @@ def _get_search_hint(field: str) -> str:
     根据字段名返回搜索提示，帮助 LLM 找到正确的数据源
     """
     hints = {
-        'Common Equity Tier 1 Capital': "Please search for 'NAB Pillar 3 Disclosure' or 'CBA CET1 Capital' FY2025 annual report.",
-        'Risk Weighted Assets': "Please search for 'NAB Risk Weighted Assets' or 'CBA RWA' FY2025 annual report.",
-        'Group Average LVR': "Please search for 'NAB Group Average LVR' or 'CBA mortgage LVR' FY2025 annual report.",
-        'Annual Production Volume': "Please search for 'FMG annual report 2025 production volume'.",
-        'Total Proved Reserves': "Please search for 'BHP proved reserves 2025' or 'RIO Tinto reserves 2025'.",
-        'Sustaining Capex': "Please search for 'sustaining capital expenditure' in annual report.",
-        'CPI Linkage': "Please search for 'CPI linkage percentage' in infrastructure fund annual report.",
-        'Weighted Average Contract Expiry': "Please search for 'WACE' or 'weighted average contract expiry' in annual report.",
-        'Total Industry Revenue': "Please search for 'total industry revenue' or 'market size' for the sector.",
-        'Forward EPS': "Please search for 'forward EPS 2026' or 'analyst consensus EPS'.",
+        'Common Equity Tier 1 Capital': "search from 'Pillar 3 Disclosure' or 'FY2025 annual report'",
+        'Risk Weighted Assets': "search for 'Risk Weighted Assets' or 'RWA' from 'FY2025 annual report'",
+        'Group Average LVR': "search for 'Group Average LVR' or 'mortgage LVR' from 'FY2025 annual report' or 'Stratification Tables Investor Report'",
+        'Annual Production Volume': "search for 'FMG annual report 2025 production volume'",
+        'Total Proved Reserves': "search for 'BHP proved reserves 2025' or 'RIO Tinto reserves 2025'",
+        'Sustaining Capex': "search for 'sustaining capital expenditure' in annual report",
+        'CPI Linkage': "search for 'CPI linkage percentage' in infrastructure fund annual report",
+        'Weighted Average Contract Expiry': "search for 'WACE' or 'weighted average contract expiry' in annual report",
+        'Total Industry Revenue': "search for 'total industry revenue' or 'market size' for the sector",
+        'Forward EPS': "search for 'forward EPS 2026' or 'analyst consensus EPS'",
     }
-    return hints.get(field, "Please search the annual report 2025.")
+    return hints.get(field, "search the annual report 2025.")
 
 
 def _parse_response(response: str, field: str) -> Optional[Dict]:
@@ -288,29 +289,30 @@ def _fill_single_field(json_data: Dict, ticker: str, industry: str, field: str) 
     """
     # 再次检查字段是否已存在（可能被其他调用填充）
     if not _is_field_missing(json_data, field):
-        print(f"  {field}: already exists, skip")
+        logger.debug(f"  {field}: already exists, skip")
         return json_data
 
-    print(f"  {field}: calling API...")
+    logger.info(f"  {field}: calling Gemini API...")
 
     # 构建单个字段的 prompt
     prompt = _build_single_field_prompt(ticker, industry, field)
-    print(f"  {field}: prompt={prompt}")
+    logger.debug(f"Prompt: {prompt}")
 
     # 调用 API
     response = _call_api(prompt, field)
-    print(f"  {field}: response={response[:200] if response else 'None'}...")
     if not response:
-        print(f"  {field}: API call failed")
+        logger.warning(f"  {field}: API call failed")
         return json_data
+
+    logger.debug(f"  {field}: response={response if response else 'None'}")
 
     # 解析响应
     filled_value = _parse_response(response, field)
     if filled_value is None:
-        print(f"  {field}: failed to parse response")
+        logger.warning(f"  {field}: failed to parse response")
         return json_data
 
-    print(f"  {field}: got value {filled_value}")
+    logger.info(f"  {field}: successfully filled with value {filled_value}")
 
     # 初始化 extra
     if 'extra' not in json_data:
@@ -337,26 +339,31 @@ def fill_missing_data(json_data: Dict, industry: str) -> Dict:
     """
     ticker = json_data.get('ticker', '').replace('.AX', '')
 
+    # 设置 ticker 用于日志
+    set_ticker(ticker)
+    logger.info(f"Starting fill_missing_data for {ticker} (industry: {industry})")
+
     # 获取行业需要搜索的字段
     search_fields = _get_search_fields(industry)
 
     if not search_fields:
-        print(f"{ticker}: No search fields defined for industry {industry}")
+        logger.warning(f"No search fields defined for industry {industry}")
         return json_data
 
     # 识别缺失的字段
     missing_fields = [f for f in search_fields if _is_field_missing(json_data, f)]
 
     if not missing_fields:
-        print(f"{ticker}: No missing fields for industry {industry}")
+        logger.info(f"No missing fields for industry {industry}")
         return json_data
 
-    print(f"{ticker}: Found {len(missing_fields)} missing fields: {missing_fields}")
+    logger.info(f"Found {len(missing_fields)} missing fields: {missing_fields}")
 
     # 对每个缺失字段独立调用 API
     for field in missing_fields:
         json_data = _fill_single_field(json_data, ticker, industry, field)
 
+    logger.info(f"fill_missing_data completed for {ticker}")
     return json_data
 
 

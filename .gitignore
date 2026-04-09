@@ -23,3 +23,6 @@ divident_screening/dev.code-workspace
 divident_screening/.claude
 divident_screening/tests/__pycache__/*
 divident_screening/scorers/__pycache__/*
+divident_screening/logs/app.log
+divident_screening/claude_code_src
+rustcode/claude_config_backup/.claude/settings.json

@@ -4,6 +4,7 @@ import os
 import glob
 from datetime import datetime
 import uuid
+from logger import logger, set_ticker
 
 app = Flask(__name__)
 
@@ -64,10 +65,15 @@ def analyze():
     data = request.get_json()
     symbol = data.get('symbol', '').upper().strip()
 
+    # 设置 ticker 用于日志
+    set_ticker(symbol)
+    logger.info(f"Starting analysis for {symbol}")
+
     # Auto-detect industry from scraped data (not from user input)
     industry = None
 
     if not symbol:
+        logger.warning("Empty symbol provided")
         return jsonify({'error': 'Please enter a stock symbol'}), 400
 
     # Create unique ID for this analysis
@@ -83,10 +89,12 @@ def analyze():
             latest_file = sorted(existing_files)[-1]
             with open(latest_file, 'r', encoding='utf-8') as f:
                 json_data = json.load(f)
-            print(f"Using cached data for {symbol}: {latest_file}")
+            logger.info(f"Using cached data for {symbol}: {latest_file}")
         else:
             # Scrape new data
+            logger.info(f"Scraping new data for {symbol}")
             json_data = scrape_stock(symbol)
+            logger.info(f"Scraping completed for {symbol}")
 
         if not json_data or not json_data.get('income_statement'):
             return jsonify({'error': f'Could not find data for {symbol}. Make sure it\'s a valid ASX stock.'}), 404
@@ -94,11 +102,6 @@ def analyze():
         # Only save if we scraped new data (not from cache)
         is_cached = bool(existing_files)
         if not is_cached:
-            # Save raw JSON data
-            raw_file = os.path.join(DATA_DIR, 'raw', f'{symbol}_{timestamp}_{analysis_id}.json')
-            with open(raw_file, 'w', encoding='utf-8') as f:
-                json.dump(json_data, f, indent=2)
-
             # Save JSON data
             json_file = os.path.join(DATA_DIR, 'json', f'{symbol}_{timestamp}_{analysis_id}.json')
             with open(json_file, 'w', encoding='utf-8') as f:
@@ -110,10 +113,12 @@ def analyze():
 
         # Auto-detect industry from scraped data
         industry = detect_industry(symbol, json_data)
+        logger.info(f"Detected industry: {industry}")
 
         # Score the stock
         scorer = ScoringSystem(json_data)
         score_result = scorer.score(industry)
+        logger.info(f"Scoring completed - Total: {score_result.total_score}/{score_result.max_score}")
 
         # Prepare response
         response = {
@@ -145,9 +150,11 @@ def analyze():
         }
         _save_cached_score(symbol, cache_data)
 
+        logger.info(f"Analysis completed successfully for {symbol}")
         return jsonify(response)
 
     except Exception as e:
+        logger.error(f"Analysis failed for {symbol}: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/history')
