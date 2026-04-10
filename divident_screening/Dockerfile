@@ -10,6 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     unzip \
     ca-certificates \
+    sudo \
+    openssh-client \
     && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
@@ -30,6 +32,8 @@ WORKDIR /workspace
 
 ENV NPM_CONFIG_PREFIX=/home/dev/.npm-global
 ENV PATH=/home/dev/.npm-global/bin:/home/dev/.local/bin:$PATH
+
+#RUN npm install -g @anthropic-ai/claude-code
 
 # ENV CLAUDE_CONFIG_DIR=/workspace/claude_config
 

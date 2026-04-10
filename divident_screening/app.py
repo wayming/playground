@@ -136,7 +136,6 @@ def analyze():
             'failed_checks': score_result.failed_checks,
             'ratios': {k: v for k, v in json_data.get('ratios', {}).items()
                       if isinstance(v, dict) and 'Current' in v},
-            'raw_file': raw_file,
             'json_file': json_file
         }
 

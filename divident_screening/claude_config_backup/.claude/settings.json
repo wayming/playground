@@ -3,24 +3,13 @@
     "ANTHROPIC_BASE_URL": "https://api.minimaxi.com/anthropic",
     "ANTHROPIC_AUTH_TOKEN": "{{MINIMAX_API_KEY}}",
     "API_TIMEOUT_MS": "3000000",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "ANTHROPIC_MODEL": "MiniMax-M2.5",
     "ANTHROPIC_SMALL_FAST_MODEL": "MiniMax-M2.5",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "MiniMax-M2.5",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "MiniMax-M2.5",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "MiniMax-M2.5"
   },
-  // "env": {
-  //   "ANTHROPIC_BASE_URL": "https://openrouter.ai/api/v1/anthropic", 
-  //   "ANTHROPIC_AUTH_TOKEN": "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",
-  //   "API_TIMEOUT_MS": "300000",
-  //   "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": 1,
-  //   "ANTHROPIC_MODEL": "anthropic/claude-3.5-sonnet",
-  //   "ANTHROPIC_SMALL_FAST_MODEL": "anthropic/claude-3-haiku",
-  //   "ANTHROPIC_DEFAULT_SONNET_MODEL": "anthropic/claude-3.5-sonnet",
-  //   "ANTHROPIC_DEFAULT_OPUS_MODEL": "anthropic/claude-3-opus",
-  //   "ANTHROPIC_DEFAULT_HAIKU_MODEL": "anthropic/claude-3-haiku"
-  // },
   "permissions": {
     "defaultMode": "bypassPermissions"
   },

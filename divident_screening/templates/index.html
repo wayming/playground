@@ -817,16 +817,26 @@
                 'rgba(52, 152, 219, 0.7)',   // 蓝色
             ];
 
+            // Get consistent color based on stock index (not sorted)
+            function getStockColor(idx) {
+                return stockColors[idx % stockColors.length].replace('0.7', '1');
+            }
+
+            function getStockColorAlpha(idx, alpha = '0.7') {
+                return stockColors[idx % stockColors.length].replace('0.7', alpha);
+            }
+
             // Industry metrics definition (from score_system.md)
             // key: matching key in details, name: display name, altKeys: alternative keys for matching
             const industryMetrics = {
                 'banks': [
                     { key: 'NIM', name: '净息差', altKeys: ['净息差'], benchmark: [1.8, 2.1], polarity: 'higher', good: 1.95, bad: 1.8 },
                     { key: 'CET1', name: '资本充足率', altKeys: ['CET1', '资本充足率'], benchmark: [11.5, 12.5], polarity: 'higher', good: 12.5, bad: 11.5 },
-                    { key: 'Cost-to-Income', name: '成本收入比', altKeys: ['成本收入比'], benchmark: [43, 46], polarity: 'lower', good: 43, bad: 46 },
+                    { key: 'Cost-to-Income', name: '成本收入比', altKeys: ['成本收入比'], benchmark: [43, 52], polarity: 'lower', good: 43, bad: 52 },
                     { key: 'ROE', name: '净资产收益率', altKeys: ['ROE', '净资产收益率'], benchmark: [11, 12], polarity: 'higher', good: 12, bad: 11 },
-                    { key: 'Bad Debt', name: '不良贷款率', altKeys: ['Bad Debt', '不良贷款率'], benchmark: [0.1, 0.15], polarity: 'lower', good: 0.1, bad: 0.15 },
-                    { key: 'Payout', name: '股息支付率', altKeys: ['Payout', '股息支付率'], benchmark: [70, 80], polarity: 'range', goodMin: 70, goodMax: 80 }
+                    { key: 'Bad Debt', name: '不良贷款率', altKeys: ['Bad Debt', 'Credit Risk', '不良贷款率'], benchmark: [0.1, 0.15], polarity: 'lower', good: 0.1, bad: 0.15 },
+                    { key: 'Payout', name: '股息支付率', altKeys: ['Payout', '股息支付率'], benchmark: [70, 80], polarity: 'range', goodMin: 70, goodMax: 80 },
+                    { key: 'LVR', name: '贷款价值比', altKeys: ['LVR', 'Group Average LVR', '贷款价值比'], benchmark: [50, 75], polarity: 'lower', good: 50, bad: 75 }
                 ],
                 'materials': [
                     { key: 'Operating Cost', name: '运营成本率', altKeys: ['Operating Cost', '运营成本率'], benchmark: [1.0, 1.5], polarity: 'higher', good: 1.5, bad: 1.0 },
@@ -957,13 +967,21 @@
 
                 // Extract scores for each stock
                 const getScoreValue = (details, metricDef) => {
-                    // Find matching metric using altKeys
+                    // Find matching metric using altKeys - support exact match and includes
                     const keys = [metricDef.key, ...(metricDef.altKeys || [])];
                     const found = details.find(d => {
                         const metricName = d.metric || '';
-                        return keys.some(k => metricName.includes(k));
+                        // Exact match OR includes match (case-insensitive)
+                        return keys.some(k =>
+                            metricName === k ||
+                            metricName.toLowerCase() === k.toLowerCase() ||
+                            metricName.toLowerCase().includes(k.toLowerCase())
+                        );
                     });
-                    if (!found) return 0;
+                    if (!found) {
+                        console.log('Not found for', metricDef.key, 'keys:', keys, 'available:', details.map(d => d.metric));
+                        return 0;
+                    }
 
                     // Parse value - handle formats like "1.93%", "13.64%", "$10349M"
                     let val = found.value;
@@ -975,22 +993,26 @@
 
                 // Normalize values to 0-10 scale based on benchmark
                 const normalizeValue = (value, metric) => {
-                    if (value === 0) return 0;
+                    if (value === 0 || value === null || value === undefined) return 0;
 
                     const { polarity, good, bad, goodMin, goodMax } = metric;
 
                     if (polarity === 'higher') {
-                        // Map good->10, bad->0
-                        const ratio = Math.max(0, Math.min(1, (value - bad) / (good - bad)));
-                        return ratio * 10;
+                        // For higher is better: use threshold logic
+                        if (value >= good) return 10;
+                        if (value <= bad) return 0;
+                        // Linear interpolation for in-between
+                        const ratio = (value - bad) / (good - bad);
+                        return Math.max(0, Math.min(1, ratio)) * 10;
                     } else if (polarity === 'lower') {
-                        // For lower is better: value <= good → 10, value >= bad → 0
-                        // Allow small buffer above bad
-                        const badBuffer = bad * 1.1; // 10% buffer
-                        if (value <= good) return 10;
-                        if (value >= badBuffer) return 0;
-                        const ratio = (badBuffer - value) / (badBuffer - good);
-                        return ratio * 10;
+                        // For lower is better: use threshold logic matching scorer
+                        // good is the threshold for acceptable (score >= 7)
+                        // bad is the threshold for poor (score = 0)
+                        if (value <= good) return 10;  // <= 43 = 10
+                        if (value > bad) return 0;     // > 52 = 0
+                        // For values between good and bad
+                        const ratio = (bad - value) / (bad - good);
+                        return Math.max(0, ratio) * 10;
                     } else if (polarity === 'range') {
                         // Within range = 10, outside = scaled
                         if (value >= goodMin && value <= goodMax) return 10;
@@ -1001,20 +1023,36 @@
                     return 5; // default
                 };
 
-                // Build datasets for radar
+// Build datasets for radar - use pre-calculated scores from backend
+                const getScoreFromDetails = (details, metricDef) => {
+                    const keys = [metricDef.key, ...(metricDef.altKeys || [])];
+                    const found = details.find(d => {
+                        const metricName = d.metric || '';
+                        return keys.some(k =>
+                            metricName === k ||
+                            metricName.toLowerCase() === k.toLowerCase() ||
+                            metricName.toLowerCase().includes(k.toLowerCase())
+                        );
+                    });
+                    if (!found) return null;
+                    // Use pre-calculated score from backend
+                    return found.score || 0;
+                };
+
                 const datasets = stocks.map((stock, idx) => {
+                    // Use pre-calculated scores from backend (scale 0-10)
                     const values = metrics.map(m => {
-                        const rawVal = getScoreValue(stock.details, m);
-                        return normalizeValue(rawVal, m);
+                        const score = getScoreFromDetails(stock.details, m);
+                        return score !== null ? score : 0;
                     });
 
                     return {
                         label: stock.symbol,
                         data: values,
-                        backgroundColor: stockColors[idx % stockColors.length].replace('0.7', '0.2'),
-                        borderColor: stockColors[idx % stockColors.length].replace('0.7', '1'),
+                        backgroundColor: getStockColorAlpha(idx, '0.2'),
+                        borderColor: getStockColor(idx),
                         borderWidth: 2,
-                        pointBackgroundColor: stockColors[idx % stockColors.length].replace('0.7', '1'),
+                        pointBackgroundColor: getStockColor(idx),
                         pointBorderColor: '#fff',
                         pointRadius: 4
                     };
@@ -1082,8 +1120,8 @@
                 const container = document.getElementById('portfolioStats');
                 const metrics = industryMetrics[industry] || industryMetrics['banks'];
 
-                // Sort by score
-                stocks.sort((a, b) => (b.score?.percentage || 0) - (a.score?.percentage || 0));
+                // Don't sort - keep original order to match radar chart colors
+                // stocks.sort((a, b) => (b.score?.percentage || 0) - (a.score?.percentage || 0));
 
                 let html = `
                     <div class="comp-table-container">
@@ -1092,31 +1130,36 @@
                                 <tr>
                                     <th>股票</th>
                                     <th>总分</th>
-                                    ${metrics.slice(0, 6).map(m => `<th>${m.name}</th>`).join('')}
+                                    ${metrics.map(m => `<th>${m.name}</th>`).join('')}
                                 </tr>
                             </thead>
                             <tbody>
                 `;
 
                 stocks.forEach((stock, idx) => {
-                    // Improved getVal that uses altKeys
+                    // Improved getVal that uses altKeys - support exact match and includes
                     const getVal = (details, metricDef) => {
                         const keys = [metricDef.key, ...(metricDef.altKeys || [])];
                         const found = details.find(d => {
                             const n = d.metric || '';
-                            return keys.some(k => n.includes(k));
+                            // Exact match OR includes match (case-insensitive)
+                            return keys.some(k =>
+                                n === k ||
+                                n.toLowerCase() === k.toLowerCase() ||
+                                n.toLowerCase().includes(k.toLowerCase())
+                            );
                         });
                         // Value already includes unit (like "1.93%"), just return it
                         return found ? found.value : '-';
                     };
 
-                    const color = stockColors[idx % stockColors.length].replace('0.7', '1');
+                    const color = getStockColor(idx);
 
                     html += `
                         <tr style="cursor: pointer;" onclick="document.getElementById('symbolInput').value='${stock.symbol}';closePortfolio();analyzeStock();">
                             <td style="color: ${color}; font-weight: bold;">${stock.symbol}</td>
                             <td>${stock.score?.percentage || 0}%</td>
-                            ${metrics.slice(0, 6).map(m => `<td>${getVal(stock.details, m)}</td>`).join('')}
+                            ${metrics.map(m => `<td>${getVal(stock.details, m)}</td>`).join('')}
                         </tr>
                     `;
                 });
