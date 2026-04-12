@@ -53,8 +53,8 @@ def _load_cached_score(symbol: str, json_file: str) -> dict | None:
 def _save_cached_score(symbol: str, score_result: dict):
     """保存评分到缓存"""
     cache_path = _get_cache_path(symbol)
-    with open(cache_path, 'w') as f:
-        json.dump(score_result, f)
+    with open(cache_path, 'w', encoding='UTF8') as f:
+        json.dump(score_result, f, indent=2, ensure_ascii=False)
 
 @app.route('/')
 def index():

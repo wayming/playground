@@ -18,7 +18,9 @@ from scorers.materials import (
     score_leverage,
     score_payout,
     calculate_materials_score,
-    WEIGHTS
+    get_extra_value,
+    _compute_weighted_reserves_life,
+    WEIGHTS,
 )
 
 
@@ -386,6 +388,178 @@ class TestCalculateMaterialsScore(unittest.TestCase):
         self.assertEqual(result['ticker'], 'PARTIAL.AX')
 
 
+class TestGetExtraValue(unittest.TestCase):
+    """Test get_extra_value helper"""
+
+    def test_direct_float(self):
+        data = {'extra': {'X': 42.0}}
+        self.assertEqual(get_extra_value(data, 'X'), 42.0)
+
+    def test_dict_with_period(self):
+        data = {'extra': {'X': {'FY 2025': 1360.0}}}
+        self.assertEqual(get_extra_value(data, 'X'), 1360.0)
+
+    def test_dict_priority(self):
+        data = {'extra': {'X': {'FY 2024': 100, 'FY 2025': 200}}}
+        self.assertEqual(get_extra_value(data, 'X'), 200.0)
+
+    def test_missing_key(self):
+        data = {'extra': {'X': 42}}
+        self.assertIsNone(get_extra_value(data, 'Y'))
+
+    def test_no_extra(self):
+        data = {'ratios': {}}
+        self.assertIsNone(get_extra_value(data, 'X'))
+
+    def test_none_value(self):
+        data = {'extra': {'X': None}}
+        self.assertIsNone(get_extra_value(data, 'X'))
+
+
+class TestComputeWeightedReservesLife(unittest.TestCase):
+    """Test _compute_weighted_reserves_life with per-commodity data"""
+
+    def _make_data(self, **overrides):
+        data = {
+            'extra': {
+                'Iron Ore Proved Reserves': {'FY 2025': 800},
+                'Iron Ore Probable Reserves': {'FY 2025': 560},
+                'Iron Ore Annual Production': {'FY 2025': 263},
+                'Copper Proved Reserves': {'FY 2025': 8},
+                'Copper Probable Reserves': {'FY 2025': 4},
+                'Copper Annual Production': {'FY 2025': 1.5},
+                'Coal Proved Reserves': {'FY 2025': 200},
+                'Coal Probable Reserves': {'FY 2025': 100},
+                'Coal Annual Production': {'FY 2025': 30},
+                'Iron Ore EBITDA Contribution': {'FY 2025': 60},
+                'Copper EBITDA Contribution': {'FY 2025': 25},
+                'Coal EBITDA Contribution': {'FY 2025': 15},
+            }
+        }
+        data['extra'].update(overrides)
+        return data
+
+    def test_weighted_rli_basic(self):
+        data = self._make_data()
+        rli, details = _compute_weighted_reserves_life(data)
+        self.assertIsNotNone(rli)
+        self.assertEqual(len(details), 3)
+        self.assertGreater(rli, 0)
+
+    def test_per_commodity_rli_values(self):
+        data = self._make_data()
+        _, details = _compute_weighted_reserves_life(data)
+        iron = next(d for d in details if d['commodity'] == 'Iron Ore')
+        self.assertAlmostEqual(iron['rli'], (800 + 560) / 263, places=1)
+        copper = next(d for d in details if d['commodity'] == 'Copper')
+        self.assertAlmostEqual(copper['rli'], (8 + 4) / 1.5, places=1)
+
+    def test_ebitda_weighting(self):
+        """Higher EBITDA weight commodities should dominate the final RLI."""
+        data = self._make_data(**{
+            'Iron Ore EBITDA Contribution': {'FY 2025': 90},
+            'Copper EBITDA Contribution': {'FY 2025': 5},
+            'Coal EBITDA Contribution': {'FY 2025': 5},
+        })
+        rli, details = _compute_weighted_reserves_life(data)
+        iron_rli = (800 + 560) / 263
+        self.assertAlmostEqual(rli, iron_rli, delta=1.5)
+
+    def test_no_extra_returns_none(self):
+        data = {'ratios': {}}
+        rli, details = _compute_weighted_reserves_life(data)
+        self.assertIsNone(rli)
+        self.assertEqual(details, [])
+
+    def test_partial_commodities(self):
+        """Only iron ore data available."""
+        data = {
+            'extra': {
+                'Iron Ore Proved Reserves': {'FY 2025': 1000},
+                'Iron Ore Probable Reserves': {'FY 2025': 360},
+                'Iron Ore Annual Production': {'FY 2025': 263},
+                'Iron Ore EBITDA Contribution': {'FY 2025': 100},
+            }
+        }
+        rli, details = _compute_weighted_reserves_life(data)
+        self.assertIsNotNone(rli)
+        self.assertEqual(len(details), 1)
+        self.assertAlmostEqual(rli, 1360 / 263, places=1)
+
+    def test_no_ebitda_weight_falls_back_to_average(self):
+        """When EBITDA weights are all missing, use simple average."""
+        data = {
+            'extra': {
+                'Iron Ore Proved Reserves': {'FY 2025': 1000},
+                'Iron Ore Probable Reserves': {'FY 2025': 360},
+                'Iron Ore Annual Production': {'FY 2025': 263},
+                'Copper Proved Reserves': {'FY 2025': 12},
+                'Copper Probable Reserves': {'FY 2025': 0},
+                'Copper Annual Production': {'FY 2025': 1.5},
+            }
+        }
+        rli, details = _compute_weighted_reserves_life(data)
+        iron_rli = 1360 / 263
+        copper_rli = 12 / 1.5
+        expected_avg = (iron_rli + copper_rli) / 2
+        self.assertAlmostEqual(rli, expected_avg, places=1)
+
+    def test_zero_production_skipped(self):
+        data = {
+            'extra': {
+                'Iron Ore Proved Reserves': {'FY 2025': 1000},
+                'Iron Ore Probable Reserves': {'FY 2025': 360},
+                'Iron Ore Annual Production': {'FY 2025': 0},
+            }
+        }
+        rli, details = _compute_weighted_reserves_life(data)
+        self.assertIsNone(rli)
+        self.assertEqual(details, [])
+
+
+class TestCalculateMaterialsScoreWithExtra(unittest.TestCase):
+    """Test that calculate_materials_score uses per-commodity data from extra."""
+
+    def test_weighted_reserves_life_from_extra(self):
+        data = {
+            'ticker': 'BHP.AX',
+            'extra': {
+                'Iron Ore Proved Reserves': {'FY 2025': 800},
+                'Iron Ore Probable Reserves': {'FY 2025': 560},
+                'Iron Ore Annual Production': {'FY 2025': 263},
+                'Iron Ore EBITDA Contribution': {'FY 2025': 60},
+                'Copper Proved Reserves': {'FY 2025': 8},
+                'Copper Probable Reserves': {'FY 2025': 4},
+                'Copper Annual Production': {'FY 2025': 1.5},
+                'Copper EBITDA Contribution': {'FY 2025': 25},
+                'Coal Proved Reserves': {'FY 2025': 200},
+                'Coal Probable Reserves': {'FY 2025': 100},
+                'Coal Annual Production': {'FY 2025': 30},
+                'Coal EBITDA Contribution': {'FY 2025': 15},
+            },
+            'income_statement': {'Revenue': {'FY 2025': 100000}, 'Cost of Revenue': {'FY 2025': 50000}},
+        }
+        result = calculate_materials_score(data)
+        rl = result['metrics']['Reserves Life']
+        self.assertIsNotNone(rl['value'])
+        self.assertGreater(rl['value'], 0)
+        self.assertGreater(len(rl['commodity_details']), 0)
+
+    def test_fallback_to_simple_reserves_life(self):
+        """When no extra per-commodity data, falls back to simple Reserves/Production."""
+        data = {
+            'ticker': 'FMG.AX',
+            'balance_sheet': {
+                'Total Proved Reserves': {'FY 2025': 500},
+                'Annual Production Volume': {'FY 2025': 20},
+            },
+        }
+        result = calculate_materials_score(data)
+        rl = result['metrics']['Reserves Life']
+        self.assertAlmostEqual(rl['value'], 25.0)
+        self.assertEqual(rl['commodity_details'], [])
+
+
 def run_tests():
     """Run all materials scoring tests."""
     suite = unittest.TestSuite()
@@ -400,6 +574,9 @@ def run_tests():
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestPayoutScoring))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWeights))
     suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalculateMaterialsScore))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetExtraValue))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestComputeWeightedReservesLife))
+    suite.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalculateMaterialsScoreWithExtra))
 
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)

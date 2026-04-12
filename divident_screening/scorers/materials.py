@@ -11,7 +11,7 @@ Materials Scorecard - 矿业基本面打分系统
 7. Payout Ratio (分红率): 50%-70% 为目标
 """
 
-from typing import Dict, Any, Optional, Tuple
+from typing import Dict, Any, Optional, Tuple, List
 
 
 # ==================== 评分函数 ====================
@@ -212,7 +212,64 @@ WEIGHTS = {
 }
 
 
+# ==================== 矿种定义 ====================
+
+COMMODITIES = [
+    {
+        'name': 'Iron Ore',
+        'proved_key': 'Iron Ore Proved Reserves',
+        'probable_key': 'Iron Ore Probable Reserves',
+        'production_key': 'Iron Ore Annual Production',
+        'ebitda_key': 'Iron Ore EBITDA Contribution',
+    },
+    {
+        'name': 'Copper',
+        'proved_key': 'Copper Proved Reserves',
+        'probable_key': 'Copper Probable Reserves',
+        'production_key': 'Copper Annual Production',
+        'ebitda_key': 'Copper EBITDA Contribution',
+    },
+    {
+        'name': 'Coal',
+        'proved_key': 'Coal Proved Reserves',
+        'probable_key': 'Coal Probable Reserves',
+        'production_key': 'Coal Annual Production',
+        'ebitda_key': 'Coal EBITDA Contribution',
+    },
+]
+
+
 # ==================== 数据提取工具 ====================
+
+def get_extra_value(data: Dict[str, Any], key: str) -> Optional[float]:
+    """
+    从 data['extra'] 中提取值。
+
+    extra 中的值可能是:
+    - float/int 直接值
+    - dict 如 {"FY 2025": 1360.0}
+
+    Returns:
+        找到的值 (float) 或 None
+    """
+    extra = data.get('extra', {})
+    val = extra.get(key)
+    if val is None:
+        return None
+    if isinstance(val, (int, float)):
+        return float(val)
+    if isinstance(val, dict):
+        for period in ['TTM', 'Current', 'FY 2025', 'FY 2024', 'Annual Report 2025']:
+            if period in val and val[period] is not None:
+                return float(val[period])
+        for v in val.values():
+            if v is not None:
+                try:
+                    return float(v)
+                except (TypeError, ValueError):
+                    continue
+    return None
+
 
 def get_value(data: Dict[str, Any], *keys: str) -> Optional[float]:
     """
@@ -245,6 +302,73 @@ def get_value(data: Dict[str, Any], *keys: str) -> Optional[float]:
     return None
 
 
+# ==================== Reserves Life 加权计算 ====================
+
+def _compute_weighted_reserves_life(data: Dict[str, Any]) -> Tuple[Optional[float], List[Dict]]:
+    """
+    从 extra 中的每矿种子字段计算加权 Reserves Life。
+
+    对每个矿种:
+        RLI = (Proved + Probable) / Annual Production
+        score = threshold mapping (>20=10, 12-20=7, 7-12=4, <5=0)
+
+    最终加权: sum(score_i * ebitda_weight_i) / sum(ebitda_weight_i)
+
+    Returns:
+        (weighted_rli, details) where details is a list of per-commodity dicts
+        for debugging/display. Returns (None, []) if no data available.
+    """
+    details = []
+    total_ebitda_weight = 0.0
+    weighted_rli_sum = 0.0
+    weighted_score_sum = 0.0
+
+    for commodity in COMMODITIES:
+        proved = get_extra_value(data, commodity['proved_key'])
+        probable = get_extra_value(data, commodity['probable_key'])
+        production = get_extra_value(data, commodity['production_key'])
+        ebitda_pct = get_extra_value(data, commodity['ebitda_key'])
+
+        if proved is None and probable is None:
+            continue
+        if production is None or production <= 0:
+            continue
+
+        total_reserves = (proved or 0.0) + (probable or 0.0)
+        if total_reserves <= 0:
+            continue
+
+        rli = total_reserves / production
+        commodity_score, commodity_level = score_reserves_life(rli)
+        weight = ebitda_pct if ebitda_pct is not None else 0.0
+
+        details.append({
+            'commodity': commodity['name'],
+            'reserves': total_reserves,
+            'production': production,
+            'rli': round(rli, 2),
+            'score': commodity_score,
+            'level': commodity_level,
+            'ebitda_weight': weight,
+        })
+
+        if weight > 0:
+            total_ebitda_weight += weight
+            weighted_rli_sum += rli * weight
+            weighted_score_sum += commodity_score * weight
+
+    if not details:
+        return None, []
+
+    if total_ebitda_weight > 0:
+        final_rli = weighted_rli_sum / total_ebitda_weight
+    else:
+        rli_values = [d['rli'] for d in details]
+        final_rli = sum(rli_values) / len(rli_values)
+
+    return round(final_rli, 2), details
+
+
 # ==================== 主评分函数 ====================
 
 def calculate_materials_score(data: Dict[str, Any]) -> Dict[str, Any]:
@@ -272,13 +396,18 @@ def calculate_materials_score(data: Dict[str, Any]) -> Dict[str, Any]:
         total_cost = cost_revenue + abs(capex) if capex else cost_revenue
         aisc = (total_cost / revenue) * 100
 
-    # Reserves Life 相关
-    reserves = get_value(data, 'Total Proved Reserves', 'Reserves')
-    production = get_value(data, 'Annual Production Volume', 'Production Volume')
-
+    # Reserves Life: prefer per-commodity weighted calculation from extra
     reserves_life = None
-    if reserves and production and production > 0:
-        reserves_life = reserves / production
+    commodity_details = []
+    weighted_rl, commodity_details = _compute_weighted_reserves_life(data)
+    if weighted_rl is not None:
+        reserves_life = weighted_rl
+    else:
+        reserves = get_value(data, 'Total Proved Reserves', 'Reserves')
+        production = get_value(data, 'Annual Production Volume', 'Production Volume')
+        reserves_life = get_value(data, 'Reserves Life')
+        if not reserves_life and reserves and production and production > 0:
+            reserves_life = reserves / production
 
     # Capex Intensity 相关
     cip = get_value(data, 'Construction in Progress', 'CIP')
@@ -365,7 +494,8 @@ def calculate_materials_score(data: Dict[str, Any]) -> Dict[str, Any]:
                 'level': life_level,
                 'benchmark': '>20年',
                 'weight': WEIGHTS['Reserves Life'],
-                'description': '矿企的"保质期"，家里有矿能挖多久'
+                'description': '矿企的"保质期"，家里有矿能挖多久',
+                'commodity_details': commodity_details,
             },
             'Capex Intensity': {
                 'value': capex_intensity,

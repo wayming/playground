@@ -1,6 +1,7 @@
 """
-Tests for Task 6: Radar Comparison functionality.
-Validates that asx_scorer.py generate_comparison_html works correctly.
+Tests for Task 6: Comparison data generation.
+Validates that asx_scorer.py score_to_dict / generate_comparison_data
+produce correct structured data for frontend rendering.
 """
 
 import unittest
@@ -8,220 +9,122 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from asx_scorer import ScoringSystem, ScoreResult, generate_comparison_html
+from asx_scorer import ScoringSystem, ScoreResult, score_to_dict, generate_comparison_data
 
 
-class TestRadarComparison(unittest.TestCase):
-    """Test radar comparison functionality."""
+class TestComparisonData(unittest.TestCase):
+    """Test comparison data generation."""
 
-    def test_two_stock_radar(self):
-        """Test two stock radar overlay."""
-        # Create two mock score results
-        result1 = ScoreResult(ticker="CBA", industry="Banks", total_score=8.0, max_score=10)
-        result1.details = [
-            {'metric': 'NIM (净息差)', 'score': 8.0, 'max': 10, 'is_common': False},
-            {'metric': 'CET1 Ratio', 'score': 7.0, 'max': 10, 'is_common': False},
-            {'metric': 'Cost-to-Income', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'ROE', 'score': 9.0, 'max': 10, 'is_common': False},
-            {'metric': 'Bad Debt Ratio', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'Payout Ratio', 'score': 7.0, 'max': 10, 'is_common': False},
+    def _make_result(self, ticker, industry, score, details=None, passed=None):
+        r = ScoreResult(ticker=ticker, industry=industry, total_score=score, max_score=10)
+        r.details = details or [
+            {'metric': 'M1', 'score': score, 'max': 10},
+            {'metric': 'M2', 'score': score - 1, 'max': 10},
         ]
-        result1.passed_checks = ['NIM', 'CET1']
+        r.passed_checks = passed or []
+        return r
 
-        result2 = ScoreResult(ticker="NAB", industry="Banks", total_score=6.0, max_score=10)
-        result2.details = [
-            {'metric': 'NIM (净息差)', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'CET1 Ratio', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'Cost-to-Income', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'ROE', 'score': 7.0, 'max': 10, 'is_common': False},
-            {'metric': 'Bad Debt Ratio', 'score': 4.0, 'max': 10, 'is_common': False},
-            {'metric': 'Payout Ratio', 'score': 6.0, 'max': 10, 'is_common': False},
+    def test_score_to_dict_basic(self):
+        """Test single result serialization."""
+        result = self._make_result("CBA", "Banks", 8.0, passed=['NIM', 'CET1'])
+        d = score_to_dict(result)
+
+        self.assertEqual(d['ticker'], 'CBA')
+        self.assertEqual(d['industry'], 'Banks')
+        self.assertEqual(d['score']['total'], 8.0)
+        self.assertEqual(d['score']['max'], 10)
+        self.assertEqual(d['score']['percentage'], 80.0)
+        self.assertEqual(d['passed_checks'], ['NIM', 'CET1'])
+        self.assertEqual(len(d['details']), 2)
+
+    def test_score_to_dict_zero_max(self):
+        """Test edge case: max_score is 0."""
+        result = ScoreResult(ticker="X", industry="Banks", total_score=0, max_score=0)
+        d = score_to_dict(result)
+        self.assertEqual(d['score']['percentage'], 0)
+
+    def test_two_stock_comparison(self):
+        """Test two stock comparison data."""
+        r1 = self._make_result("CBA", "Banks", 8.0, passed=['NIM', 'CET1'])
+        r2 = self._make_result("NAB", "Banks", 6.0, passed=['ROE'])
+
+        data = generate_comparison_data([r1, r2])
+
+        self.assertEqual(len(data), 2)
+        self.assertEqual(data[0]['ticker'], 'CBA')
+        self.assertEqual(data[1]['ticker'], 'NAB')
+        self.assertEqual(data[0]['score']['total'], 8.0)
+        self.assertEqual(data[1]['score']['total'], 6.0)
+
+    def test_three_stock_same_industry(self):
+        """Test three same-industry stocks."""
+        results = [
+            self._make_result("CBA", "Banks", 8.0),
+            self._make_result("NAB", "Banks", 6.0),
+            self._make_result("WBC", "Banks", 5.0),
         ]
-        result2.passed_checks = ['ROE']
+        data = generate_comparison_data(results)
 
-        # Generate comparison HTML
-        html = generate_comparison_html([result1, result2])
+        self.assertEqual(len(data), 3)
+        tickers = [d['ticker'] for d in data]
+        self.assertIn('CBA', tickers)
+        self.assertIn('NAB', tickers)
+        self.assertIn('WBC', tickers)
 
-        # Verify HTML contains expected elements
-        self.assertIn('CBA', html)
-        self.assertIn('NAB', html)
-        self.assertIn('雷达图对比', html)
-        self.assertIn('总分对比', html)
-        self.assertIn('详细对比', html)
-        self.assertIn('radarChart', html)
-        self.assertIn('barChart', html)
-
-    def test_same_industry_compare(self):
-        """Test same industry comparison."""
-        # Create three bank stocks
-        results = []
-        for ticker, score in [("CBA", 8.0), ("NAB", 6.0), ("WBC", 5.0)]:
-            result = ScoreResult(ticker=ticker, industry="Banks", total_score=score, max_score=10)
-            result.details = [
-                {'metric': 'NIM (净息差)', 'score': score, 'max': 10, 'is_common': False},
-                {'metric': 'CET1 Ratio', 'score': score - 1, 'max': 10, 'is_common': False},
-                {'metric': 'Cost-to-Income', 'score': score - 2, 'max': 10, 'is_common': False},
-                {'metric': 'ROE', 'score': score + 1, 'max': 10, 'is_common': False},
-                {'metric': 'Bad Debt Ratio', 'score': score - 3, 'max': 10, 'is_common': False},
-                {'metric': 'Payout Ratio', 'score': score - 1, 'max': 10, 'is_common': False},
-            ]
-            result.passed_checks = ['NIM']
-            results.append(result)
-
-        html = generate_comparison_html(results)
-
-        # Verify all three stocks are in the HTML
-        self.assertIn('CBA', html)
-        self.assertIn('NAB', html)
-        self.assertIn('WBC', html)
-        self.assertIn('Banks', html)
-
-    def test_cross_industry_compare(self):
-        """Test cross industry comparison."""
-        # Create different industry stocks
-        result1 = ScoreResult(ticker="CBA", industry="Banks", total_score=8.0, max_score=10)
-        result1.details = [
-            {'metric': 'NIM', 'score': 8.0, 'max': 10, 'is_common': False},
-            {'metric': 'CET1', 'score': 7.0, 'max': 10, 'is_common': False},
-            {'metric': 'Cost', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'ROE', 'score': 9.0, 'max': 10, 'is_common': False},
-            {'metric': 'Bad Debt', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'Payout', 'score': 7.0, 'max': 10, 'is_common': False},
+    def test_cross_industry_comparison(self):
+        """Test cross-industry comparison."""
+        results = [
+            self._make_result("CBA", "Banks", 8.0),
+            self._make_result("RIO", "Materials", 7.0),
+            self._make_result("WES", "Consumer", 9.0),
         ]
-        result1.passed_checks = ['NIM', 'CET1']
+        data = generate_comparison_data(results)
 
-        result2 = ScoreResult(ticker="RIO", industry="Materials", total_score=7.0, max_score=10)
-        result2.details = [
-            {'metric': 'AISC', 'score': 7.0, 'max': 10, 'is_common': False},
-            {'metric': 'CIP', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'NPAT', 'score': 8.0, 'max': 10, 'is_common': False},
-            {'metric': 'FCF', 'score': 7.0, 'max': 10, 'is_common': False},
-            {'metric': 'Leverage', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'Dividend', 'score': 8.0, 'max': 10, 'is_common': False},
-        ]
-        result2.passed_checks = ['AISC', 'FCF']
-
-        result3 = ScoreResult(ticker="WES", industry="Consumer", total_score=9.0, max_score=10)
-        result3.details = [
-            {'metric': 'Margin', 'score': 9.0, 'max': 10, 'is_common': False},
-            {'metric': 'ROE', 'score': 9.0, 'max': 10, 'is_common': False},
-            {'metric': 'Inventory', 'score': 8.0, 'max': 10, 'is_common': False},
-            {'metric': 'PE', 'score': 7.0, 'max': 10, 'is_common': False},
-            {'metric': 'Yield', 'score': 9.0, 'max': 10, 'is_common': False},
-            {'metric': 'Payout', 'score': 8.0, 'max': 10, 'is_common': False},
-        ]
-        result3.passed_checks = ['Margin', 'ROE']
-
-        html = generate_comparison_html([result1, result2, result3])
-
-        # Verify all industries present
-        self.assertIn('Banks', html)
-        self.assertIn('Materials', html)
-        self.assertIn('Consumer', html)
-
-    def test_stacked_bar_data(self):
-        """Test stacked bar chart data generation."""
-        result1 = ScoreResult(ticker="CBA", industry="Banks", total_score=8.5, max_score=10)
-        result1.details = [
-            {'metric': 'Metric1', 'score': 8.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric2', 'score': 9.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric3', 'score': 7.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric4', 'score': 9.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric5', 'score': 8.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric6', 'score': 9.0, 'max': 10, 'is_common': False},
-        ]
-
-        result2 = ScoreResult(ticker="NAB", industry="Banks", total_score=5.5, max_score=10)
-        result2.details = [
-            {'metric': 'Metric1', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric2', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric3', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric4', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric5', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'Metric6', 'score': 6.0, 'max': 10, 'is_common': False},
-        ]
-
-        html = generate_comparison_html([result1, result2])
-
-        # Verify bar chart is in HTML
-        self.assertIn('barChart', html)
-        # Scores should be displayed
-        self.assertIn('8.5', html)
-        self.assertIn('5.5', html)
-
-    def test_html_generation(self):
-        """Test HTML generation renders correctly."""
-        result = ScoreResult(ticker="CBA", industry="Banks", total_score=8.0, max_score=10)
-        result.details = [
-            {'metric': 'NIM', 'score': 8.0, 'max': 10, 'is_common': False},
-            {'metric': 'CET1', 'score': 7.0, 'max': 10, 'is_common': False},
-            {'metric': 'Cost', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'ROE', 'score': 9.0, 'max': 10, 'is_common': False},
-            {'metric': 'Debt', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'Payout', 'score': 7.0, 'max': 10, 'is_common': False},
-        ]
-        result.passed_checks = ['NIM', 'CET1', 'ROE']
-
-        html = generate_comparison_html([result])
-
-        # Basic HTML structure checks
-        self.assertIn('<!DOCTYPE html>', html)
-        self.assertIn('<html', html)
-        self.assertIn('</html>', html)
-        self.assertIn('echarts', html)
-        self.assertIn('股票对比分析', html)
+        self.assertEqual(len(data), 3)
+        industries = [d['industry'] for d in data]
+        self.assertIn('Banks', industries)
+        self.assertIn('Materials', industries)
+        self.assertIn('Consumer', industries)
 
     def test_empty_results(self):
-        """Test empty results handling."""
-        html = generate_comparison_html([])
-        self.assertIn('No data', html)
+        """Test empty results returns empty list."""
+        data = generate_comparison_data([])
+        self.assertEqual(data, [])
 
-    def test_single_stock_comparison(self):
-        """Test single stock comparison."""
-        result = ScoreResult(ticker="CBA", industry="Banks", total_score=8.0, max_score=10)
-        result.details = [
-            {'metric': 'NIM', 'score': 8.0, 'max': 10, 'is_common': False},
-            {'metric': 'CET1', 'score': 7.0, 'max': 10, 'is_common': False},
-            {'metric': 'Cost', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'ROE', 'score': 9.0, 'max': 10, 'is_common': False},
-            {'metric': 'Debt', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'Payout', 'score': 7.0, 'max': 10, 'is_common': False},
+    def test_single_stock(self):
+        """Test single stock comparison data."""
+        r = self._make_result("CBA", "Banks", 8.5, passed=['NIM'])
+        data = generate_comparison_data([r])
+
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['ticker'], 'CBA')
+        self.assertEqual(data[0]['score']['total'], 8.5)
+
+    def test_details_preserved(self):
+        """Test that metric details are preserved."""
+        details = [
+            {'metric': 'NIM', 'score': 8.0, 'max': 10, 'value': '1.93%', 'description': 'Net Interest Margin'},
+            {'metric': 'CET1', 'score': 7.0, 'max': 10, 'value': '12.5%'},
         ]
-        result.passed_checks = ['NIM']
+        r = ScoreResult(ticker="CBA", industry="Banks", total_score=8.0, max_score=10)
+        r.details = details
 
-        html = generate_comparison_html([result])
+        d = score_to_dict(r)
+        self.assertEqual(len(d['details']), 2)
+        self.assertEqual(d['details'][0]['metric'], 'NIM')
+        self.assertEqual(d['details'][0]['value'], '1.93%')
+        self.assertEqual(d['details'][1]['metric'], 'CET1')
 
-        self.assertIn('CBA', html)
-        self.assertIn('1 只股票对比', html)
-
-    def test_indicators_alignment(self):
-        """Test that indicators are properly aligned across different result sets."""
-        result1 = ScoreResult(ticker="CBA", industry="Banks", total_score=8.0, max_score=10)
-        result1.details = [
-            {'metric': 'NIM (净息差)', 'score': 8.0, 'max': 10, 'is_common': False},
-            {'metric': 'CET1', 'score': 7.0, 'max': 10, 'is_common': False},
-        ]
-
-        result2 = ScoreResult(ticker="RIO", industry="Materials", total_score=6.0, max_score=10)
-        result2.details = [
-            {'metric': 'AISC', 'score': 6.0, 'max': 10, 'is_common': False},
-            {'metric': 'FCF', 'score': 5.0, 'max': 10, 'is_common': False},
-            {'metric': 'Leverage', 'score': 7.0, 'max': 10, 'is_common': False},
-        ]
-
-        html = generate_comparison_html([result1, result2])
-
-        # Should contain unique indicators from both
-        self.assertIn('NIM', html)
-        self.assertIn('AISC', html)
-        self.assertIn('CET1', html)
-        self.assertIn('FCF', html)
-        self.assertIn('Leverage', html)
+    def test_percentage_calculation(self):
+        """Test percentage rounding."""
+        r = self._make_result("CBA", "Banks", 7.33)
+        d = score_to_dict(r)
+        self.assertEqual(d['score']['percentage'], 73.3)
 
 
 def run_tests():
-    """Run all radar comparison tests."""
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestRadarComparison)
+    """Run all comparison data tests."""
+    suite = unittest.TestLoader().loadTestsFromTestCase(TestComparisonData)
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
     return result.wasSuccessful()

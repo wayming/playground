@@ -8,7 +8,7 @@ Banks Scorecard - 银行基本面打分系统
 4. ROE (净资产收益率): 11%-13% 区间评分
 5. Credit Risk (坏账风险): <0.15% 为目标
 6. Payout Ratio (分红率): 70%-80% 区间评分
-7. LVR (贷款价值比): <50% 为目标，>75% 时总分折半
+7. LVR (贷款价值比): <50% 为目标, >75% 时总分折半
 """
 
 from typing import Dict, Any, Optional, Tuple
@@ -23,8 +23,8 @@ def score_nim(nim: Optional[float]) -> Tuple[float, str]:
     判定逻辑:
         10分: >= 2.1%
         7分: 1.8% - 2.1%
-        4分: 1.6% - 1.8%
-        0分: < 1.6%
+        4分: 1.5% - 1.8%
+        0分: < 1.5%
 
     Returns:
         (score, level): 分数和评级
@@ -36,7 +36,7 @@ def score_nim(nim: Optional[float]) -> Tuple[float, str]:
         return 10.0, "excellent"
     elif nim >= 1.8:
         return 7.0, "good"
-    elif nim >= 1.6:
+    elif nim >= 1.4:
         return 4.0, "fair"
     else:
         return 0.0, "poor"
@@ -58,7 +58,7 @@ def score_cet1(cet1: Optional[float]) -> Tuple[float, str]:
           - < 5%: 0分
 
     Args:
-        cet1: CET1 Ratio (百分比，如 12.5 表示 12.5%)
+        cet1: CET1 Ratio (百分比, 如 12.5 表示 12.5%)
 
     Returns:
         (score, level): 分数和评级
@@ -89,7 +89,7 @@ def score_cost_to_income(cti: Optional[float]) -> Tuple[float, str]:
     判定逻辑:
         10分: < 43%
         7分: 43% - 47%
-        4分: 48% - 52%
+        4分: 47% - 55%
         0分: > 55%
 
     Returns:
@@ -102,7 +102,7 @@ def score_cost_to_income(cti: Optional[float]) -> Tuple[float, str]:
         return 10.0, "excellent"
     elif cti <= 47:
         return 7.0, "good"
-    elif cti <= 52:
+    elif cti <= 55:
         return 4.0, "fair"
     else:
         return 0.0, "poor"
@@ -198,7 +198,7 @@ def score_lvr(lvr: Optional[float]) -> Tuple[float, str]:
         10分: < 50% (极度安全)
         7分: 50% - 60% (标准稳健)
         4分: 60% - 70% (风险敞口增大)
-        0分: > 75% (高杠杆，有系统性风险)
+        0分: > 75% (高杠杆, 有系统性风险)
 
     Returns:
         (score, level): 分数和评级
@@ -305,14 +305,14 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
 
     # 其他指标
     cet1 = get_value(data, 'CET1 Ratio', 'Common Equity Tier 1 Ratio')
-    # 如果没有 CET1 Ratio，尝试从 CET1 Capital 和 RWA 计算
+    # 如果没有 CET1 Ratio, 尝试从 CET1 Capital 和 RWA 计算
     if not cet1:
         cet1_capital = get_value(data, 'Common Equity Tier 1 Capital')
         rwa = get_value(data, 'Risk Weighted Assets')
         if cet1_capital and rwa and rwa > 0:
             cet1 = (cet1_capital / rwa) * 100
 
-    # Cost-to-Income: 如果没有直接数据，尝试计算
+    # Cost-to-Income: 如果没有直接数据, 尝试计算
     cost_to_income = get_value(data, 'Cost-to-Income Ratio', 'Cost to Income Ratio', 'Operating Efficiency Ratio')
     if not cost_to_income:
         # Cost-to-Income = Total Non-Interest Expense / Revenue * 100
@@ -365,7 +365,7 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
                 'level': nim_level,
                 'benchmark': '1.8%-2.1%',
                 'weight': WEIGHTS['NIM'],
-                'description': '银行的"进销差价"，越高说明吃利差的能力越强'
+                'description': '银行的进销差价, 越高说明吃利差的能力越强'
             },
             'CET1': {
                 'value': cet1,
@@ -373,7 +373,7 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
                 'level': cet1_level,
                 'benchmark': '>11.5% 或 >=6.5%',
                 'weight': WEIGHTS['CET1'],
-                'description': '压箱底的保命钱，应对金融危机的底气'
+                'description': '压箱底的保命钱, 应对金融危机的底气'
             },
             'Cost-to-Income': {
                 'value': cost_to_income,
@@ -381,7 +381,7 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
                 'level': cti_level,
                 'benchmark': '<45%',
                 'weight': WEIGHTS['Cost-to-Income'],
-                'description': '赚100块钱要花多少水电费和人工，越低越精简高效'
+                'description': '赚100块钱要花多少水电费和人工, 越低越精简高效'
             },
             'ROE': {
                 'value': roe,
@@ -389,7 +389,7 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
                 'level': roe_level,
                 'benchmark': '11%-13%',
                 'weight': WEIGHTS['ROE'],
-                'description': '股东投入1块钱，一年能收回多少钱'
+                'description': '股东投入1块钱, 一年能收回多少钱'
             },
             'Credit Risk': {
                 'value': (provision / gross_loans * 100) if provision and gross_loans else None,
@@ -397,7 +397,7 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
                 'level': credit_level,
                 'benchmark': '<0.15%',
                 'weight': WEIGHTS['Credit Risk'],
-                'description': '每借出去100块钱，有多少是预计收不回来的'
+                'description': '每借出去100块钱, 有多少是预计收不回来的'
             },
             'Payout': {
                 'value': payout,
@@ -412,8 +412,8 @@ def calculate_banks_score(data: Dict[str, Any]) -> Dict[str, Any]:
                 'score': lvr_score,
                 'level': lvr_level,
                 'benchmark': '<50%',
-                'weight': 0,  # LVR 不直接参与加权，只做惩罚
-                'description': '房子值100万，银行借出去多少。>75%有系统性风险'
+                'weight': 0,  # LVR 不直接参与加权, 只做惩罚
+                'description': '房子值100万, 银行借出去多少。>75%有系统性风险'
             }
         }
     }

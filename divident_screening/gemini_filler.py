@@ -25,26 +25,71 @@ from logger import logger, set_ticker
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 
 # 行业特定的缺失指标 - 需要通过 Gemini 搜索的基础数据
+#
+# 结构:
+#   fields: 所有需要填充的顶层指标 (同级别)
+#   dependent_fields: 某些指标由子字段推导而来 (derived from other fields)
+#       - key = 顶层指标名 (必须也在 fields 中)
+#       - value.fields = 需要提取的子字段列表
+#       - value.doc_hint = 搜索 PDF 的提示语
+#
+# 处理逻辑:
+#   - 有 dependent_fields 的指标: 通过 metric_agent 批量提取子字段 → scorer 计算最终值
+#   - 无 dependent_fields 的指标: 通过 Gemini 直接搜索
 INDUSTRY_MISSING_FIELDS = {
-    'banks': [
-        'CET1 Ratio',
-        'Common Equity Tier 1 Capital',
-        'Risk Weighted Assets',
-        'Group Average LVR',
-    ],
-    'materials': [
-        'Annual Production Volume',
-        'Total Proved Reserves',
-        'Sustaining Capex',
-    ],
-    'infrastructure': [
-        'CPI Linkage',
-        'Weighted Average Contract Expiry',
-    ],
-    'consumer_staples': [
-        'Total Industry Revenue',
-        'Forward EPS',
-    ],
+    'banks': {
+        'fields': [
+            'CET1 Ratio',
+            'Common Equity Tier 1 Capital',
+            'Risk Weighted Assets',
+            'Group Average LVR',
+        ],
+        'dependent_fields': {},
+    },
+    'materials': {
+        'fields': [
+            'Sustaining Capex',
+            'Reserves Life',
+        ],
+        'dependent_fields': {
+            'Reserves Life': {
+                'doc_hint': (
+                    "Search {ticker} most recent Annual Report. "
+                    "Find the Ore Reserves table (Proved + Probable) and "
+                    "the Production summary table (annual attributable production). "
+                    "Also find the EBITDA or Underlying EBITDA contribution by commodity segment."
+                ),
+                'fields': [
+                    'Iron Ore Proved Reserves',
+                    'Iron Ore Probable Reserves',
+                    'Iron Ore Annual Production',
+                    'Copper Proved Reserves',
+                    'Copper Probable Reserves',
+                    'Copper Annual Production',
+                    'Coal Proved Reserves',
+                    'Coal Probable Reserves',
+                    'Coal Annual Production',
+                    'Iron Ore EBITDA Contribution',
+                    'Copper EBITDA Contribution',
+                    'Coal EBITDA Contribution',
+                ],
+            },
+        },
+    },
+    'infrastructure': {
+        'fields': [
+            'CPI Linkage',
+            'Weighted Average Contract Expiry',
+        ],
+        'dependent_fields': {},
+    },
+    'consumer_staples': {
+        'fields': [
+            'Total Industry Revenue',
+            'Forward EPS',
+        ],
+        'dependent_fields': {},
+    },
 }
 
 # 行业特定的金融文档类型
@@ -72,7 +117,7 @@ INDUSTRY_SPECIFIC_FINANCIAL_DOCS = {
 }
 
 # 模型配置
-MODEL_NAME = 'gemini-flash-latest'
+MODEL_NAME = 'gemini-3.1-flash-lite-preview'
 
 TODAY = datetime.date.today()
 THIS_YEAR = TODAY.year
@@ -97,8 +142,19 @@ def _get_llm():
 
 
 def _get_search_fields(industry: str) -> List[str]:
-    """获取指定行业需要搜索的基础字段列表"""
-    return INDUSTRY_MISSING_FIELDS.get(industry, [])
+    """获取指定行业需要搜索的简单字段列表"""
+    config = INDUSTRY_MISSING_FIELDS.get(industry, {})
+    if isinstance(config, list):
+        return config
+    return config.get('fields', [])
+
+
+def _get_dependent_fields(industry: str) -> Dict[str, Any]:
+    """获取指定行业的 dependent_fields 配置"""
+    config = INDUSTRY_MISSING_FIELDS.get(industry, {})
+    if isinstance(config, list):
+        return {}
+    return config.get('dependent_fields', {})
 
 
 def _get_doc_types(industry: str) -> List[str]:
@@ -134,12 +190,8 @@ def _search_document_links(ticker: str, industry: str, llm: ChatGoogleGenerative
 
 # Task
 1. 必须使用网络搜索功能查找 {ticker} 投资者关系官网 (Shareholder Center)。
-2. 寻找以下四类【最新】文件的有效 PDF 链接：
-   - {LAST_YEAR} 或 {THIS_YEAR} 年的 Annual Report (或最近的 Half Year Report)
-   - 最近一期的 Trading Update (对应 Quarter Report)
-   - 最新的 APS 330 / Pillar 3 Disclosure
-   - 最新的 RMBS/Covered Bond Stratification Tables (Investor Report)
-
+2. 寻找以下最新文件的有效 PDF 链接：
+   {doc_types_str}
 # Constraints
 - 仅限 {LAST_YEAR} 至 {TODAY} 之间发布的文档。
 - 如果找不到直连 PDF，请提供该文件所在的网页 URL。
@@ -460,13 +512,52 @@ def _fill_single_field(json_data: Dict, ticker: str, industry: str, field: str, 
     return json_data
 
 
+def _fill_dependent_fields(json_data: Dict, ticker: str, industry: str) -> Dict:
+    """
+    填充 dependent_fields: 通过 metric_agent 批量提取复合指标的子字段。
+
+    metric_agent 会共享 PDF pipeline (搜索一次、下载一次、RAG 一次)，
+    一次 LLM 调用提取所有子字段。
+    """
+    dep_configs = _get_dependent_fields(industry)
+    if not dep_configs:
+        return json_data
+
+    import metric_agent
+
+    if 'extra' not in json_data:
+        json_data['extra'] = {}
+
+    for composite_key, dep_config in dep_configs.items():
+        sub_fields = dep_config.get('fields', [])
+        missing = [f for f in sub_fields if _is_field_missing(json_data, f)]
+
+        if not missing:
+            logger.info(f"  dependent_fields[{composite_key}]: all sub-fields present, skip")
+            continue
+
+        logger.info(f"  dependent_fields[{composite_key}]: {len(missing)} missing sub-fields")
+
+        doc_hint = dep_config.get('doc_hint', '').replace('{ticker}', ticker)
+        results = metric_agent.compute_metrics(ticker, missing, doc_hint)
+
+        for field_name, result in results.items():
+            if result.value is not None:
+                json_data['extra'][field_name] = {result.period: result.value}
+                logger.info(f"    {field_name}: filled with {result.value} ({result.period})")
+            else:
+                logger.warning(f"    {field_name}: metric_agent returned null")
+
+    return json_data
+
+
 def fill_missing_data(json_data: Dict, industry: str) -> Dict:
     """
     填充缺失的基础数据 - 唯一的公开接口
 
-    使用两步搜索:
-    1. 先搜索相关文档链接
-    2. 把链接加入 prompt，再提取数据
+    处理两类字段:
+    1. simple fields: 通过 Gemini + Google Search 直接搜索
+    2. dependent fields: 通过 metric_agent 批量提取 (共享 PDF pipeline)
 
     Args:
         json_data: 包含财务数据的字典
@@ -477,36 +568,36 @@ def fill_missing_data(json_data: Dict, industry: str) -> Dict:
     """
     ticker = json_data.get('ticker', '').replace('.AX', '')
 
-    # 设置 ticker 用于日志
     set_ticker(ticker)
     logger.info(f"Starting fill_missing_data for {ticker} (industry: {industry})")
 
-    # 获取 LLM 实例
+    # ── Part 1: dependent fields (metric_agent pipeline) ──
+    json_data = _fill_dependent_fields(json_data, ticker, industry)
+
+    # ── Part 2: simple fields (existing Gemini direct search) ──
+    # Skip fields that have dependent_fields (already handled by metric_agent)
     llm = _get_llm()
     if not llm:
-        logger.error("LLM not available, cannot fill missing data")
+        logger.error("LLM not available, cannot fill simple fields")
         return json_data
 
-    # 获取行业需要搜索的字段
     search_fields = _get_search_fields(industry)
+    dep_keys = set(_get_dependent_fields(industry).keys())
+    simple_only = [f for f in search_fields if f not in dep_keys]
 
-    if not search_fields:
-        logger.warning(f"No search fields defined for industry {industry}")
+    if not simple_only:
+        logger.info(f"No simple search fields for industry {industry}")
         return json_data
 
-    # 识别缺失的字段
-    missing_fields = [f for f in search_fields if _is_field_missing(json_data, f)]
-
+    missing_fields = [f for f in simple_only if _is_field_missing(json_data, f)]
     if not missing_fields:
-        logger.info(f"No missing fields for industry {industry}")
+        logger.info(f"No missing simple fields for industry {industry}")
         return json_data
 
-    logger.info(f"Found {len(missing_fields)} missing fields: {missing_fields}")
+    logger.info(f"Found {len(missing_fields)} missing simple fields: {missing_fields}")
 
-    # 第一步：搜索文档链接
     doc_links = _search_document_links(ticker, industry, llm)
 
-    # 第二步：对每个缺失字段独立调用 API
     for field in missing_fields:
         json_data = _fill_single_field(json_data, ticker, industry, field, llm, doc_links)
 
