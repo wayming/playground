@@ -13,6 +13,7 @@ docker rm divident_screening || true
 docker run -dit \
   --name divident_screening \
   --user dev \
+  --gpus all \
   -e DEEPSEEK_API_KEY="$DEEPSEEK_API_KEY" \
   -e MINIMAX_API_KEY="$MINIMAX_API_KEY" \
   -e GEMINI_API_KEY="$GEMINI_API_KEY" \

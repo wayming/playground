@@ -243,36 +243,48 @@ def _download_pdf(url: str) -> Optional[str]:
 
 # ── Step 3: RAG Retrieval ─────────────────────────────────────────
 
-def _extract_tables_from_pdf(pdf_path: str) -> List[Document]:
+def _extract_tables(pdf_path: str) -> List[Dict]:
     """Extract tables as structured text blocks."""
-    docs = []
+    tables = []
     with pdfplumber.open(pdf_path) as pdf:
         for i, page in enumerate(pdf.pages):
-            tables = page.extract_tables()
-            for t_idx, table in enumerate(tables):
-                if not table:
-                    continue
+            try:
+                extracted = page.extract_tables()
+                for table in extracted:
+                    if table and len(table) > 2:
+                        tables.append({
+                            "page": i + 1,
+                            "table": table
+                        })
+            except Exception:
+                continue
+    logger.info(f"Step 3: extracted {len(tables)} tables")
+    return tables
 
-                # 转成结构化文本
-                rows = []
-                for row in table:
-                    clean_row = [str(cell).strip() if cell else "" for cell in row]
-                    rows.append(" | ".join(clean_row))
+def _table_to_text(table: List[List[str]]) -> str:
+    header = table[0]
+    rows = table[1:]
 
-                table_text = "\n".join(rows)
+    lines = []
+    for row in rows:
+        row_dict = {header[i]: row[i] for i in range(min(len(header), len(row)))}
+        lines.append(json.dumps(row_dict, ensure_ascii=False))
 
-                if len(table_text) < 50:
-                    continue
+    return "\n".join(lines)
 
-                docs.append(Document(
-                    page_content=f"[TABLE]\n{table_text}",
-                    metadata={
-                        "page": i + 1,
-                        "type": "table",
-                        "table_id": t_idx
-                    }
-                ))
-    logger.info(f"Step 3: extracted {len(docs)} tables")
+def _extract_tables_from_pdf(pdf_path: str) -> List[Document]:
+    tables = _extract_tables(pdf_path)
+    docs = []
+
+    for t in tables:
+        text = _table_to_text(t["table"])
+        docs.append(Document(
+            page_content="[TABLE]\n" + text,
+            metadata={
+                "page": t["page"],
+                "type": "table"
+            }
+        ))
     return docs
 
 def _load_pdf_pages(pdf_path: str) -> List[Document]:
@@ -501,7 +513,7 @@ Extract the metric **{field}** for **{ticker}** from the document text below.
 2. If multiple values exist, choose the most recent period
 3. If unclear → return null
 
-  "field"  : "{field}",
+# Output JSON ONLY
 {{
   "field"  : "{field}",
   "value"  : <number or null if not found>,

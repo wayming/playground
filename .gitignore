@@ -26,3 +26,6 @@ divident_screening/scorers/__pycache__/*
 divident_screening/logs/app.log
 divident_screening/claude_code_src
 rustcode/claude_config_backup/.claude/settings.json
+backtesting/2026*
+divident_screening/data/
+divident_screening/split_chapters/

@@ -94,25 +94,25 @@ class AverageDownStrategy(TradingStrategy):
         return operations
 
 # Average down by MA250
-# Each bind only trigger once, and restart from band1 when MA250 exceeds initial price
+# Each band only trigger once, and restart from band1 when MA250 exceeds initial price
 class AverageDownByMA250Strategy(TradingStrategy):
     def __init__(self, symbols) -> None:
         super().__init__()
         self.symbols = symbols
         self.average_down_bands = {
-            "band1": (0.85, 0.2),
-            "band2": (0.70, 0.4),
-            "band3": (0.55, 0.6),
-            "band4": (0.40, 0.8),
-            "band5": (0.25, 1),
-            "bind6": (None, None),
+            "band1": (0.80, 0.15), # 跌 20% 才开始第一笔
+            "band2": (0.60, 0.20), # 跌 40% 第二笔
+            "band3": (0.45, 0.25), # 跌 55% 第三笔
+            "band4": (0.30, 0.30), # 跌 70% 第四笔
+            "band5": (0.15, 0.35), # 极速深坑
+            "band6": (None, None),
         }
         self.state = {symbol: "band1" for symbol in self.symbols}
         self.cap = 20000
-    def next_bind(self, bind:str):
+    def next_band(self, band:str):
         bands = list(self.average_down_bands.keys())
-        current_index = bands.index(bind)
-        return bands[current_index + 1] if current_index < len(bands) - 1 else bind
+        current_index = bands.index(band)
+        return bands[current_index + 1] if current_index < len(bands) - 1 else band
     
     def execute(self, date, cash, holdings: dict, market_data) -> list[tuple[str, str, float]]:
         # Buy all stocks with equal weight
@@ -121,16 +121,36 @@ class AverageDownByMA250Strategy(TradingStrategy):
             return []
 
         operations = []
-
         for symbol, holding in holdings.items():
-            band_threshold, band_buy_ratio = self.average_down_bands[self.state[symbol]]
-            if band_threshold and band_buy_ratio and market_data[symbol]["Close"] < market_data[symbol]["MA250"] * band_threshold:
-                operations.append((OPERATION_BUY, symbol, min(int(holding.shares * band_buy_ratio * market_data[symbol]["Close"]), self.cap)//market_data[symbol]["Close"]))
-                logging.info(f"Average down by MA250: {symbol} {holding.initial_shares} shares at {market_data[symbol]['Close']}, "
-                f"reach {self.state[symbol]} threshold {band_threshold}")
-                self.state[symbol] = self.next_bind(self.state[symbol])
-            elif market_data[symbol]["Close"] > market_data[symbol]["MA250"]:
-                self.state[symbol] = "band1" # close price exceeds MA250, restart from band1
+            current_state = self.state[symbol]
+            band_threshold, band_buy_ratio = self.average_down_bands[current_state]
+            close_price = market_data[symbol]["Close"]
+            ma250 = market_data[symbol]["MA250"]
+
+            if close_price > ma250 * 1.05:
+                if self.state[symbol] != "band1":
+                    logging.info(f"{symbol} close price exceeds MA250, reset average down band")
+                    self.state[symbol] = "band1"
+                continue # 既然已经回升，本轮就不再判断补仓逻辑
+            
+            # 只有在定义了阈值的情况下才执行
+            if band_threshold:
+                # 触发补仓：现价低于阈值
+                if close_price < ma250 * band_threshold:
+                    # 用初始股数作为基准
+                    target_buy_shares = int(holding.shares * band_buy_ratio)
+                    
+                    # 检查是否超过单笔上限
+                    buy_amount = target_buy_shares * close_price
+                    if buy_amount > self.cap:
+                        target_buy_shares = self.cap // close_price
+                    
+                    if target_buy_shares > 0:
+                        operations.append((OPERATION_BUY, symbol, target_buy_shares))
+                        # 只有成功发出指令后才推送到下一个阶段
+                        self.state[symbol] = self.next_band(current_state)
+                        logging.info(f"Average down by MA250: {symbol} {target_buy_shares} shares at {market_data[symbol]['Close']}, next band {self.state[symbol]}")
+
         return operations
 
 # Buy all stocks with equal weight
