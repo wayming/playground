@@ -1,0 +1,1803 @@
+d13.cpp: In instantiation of ‘void dump(const auto:19&) [with auto:19 = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >]’:
+d13.cpp:42:9:   required from here
+d13.cpp:21:5: error: passing ‘const std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >’ as ‘this’ argument discards qualifiers [-fpermissive]
+   21 |     for (const auto &v : vs)
+      |     ^~~
+In file included from d13.cpp:1:
+/usr/include/c++/11/ranges:1486:7: note:   in call to ‘constexpr std::ranges::filter_view<_Vp, _Pred>::_Iterator std::ranges::filter_view<_Vp, _Pred>::begin() [with _Vp = std::ranges::ref_view<std::vector<Order> >; _Pred = main()::<lambda(const Order&)>]’
+ 1486 |       begin()
+      |       ^~~~~
+d13.cpp:21:5: error: passing ‘const std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >’ as ‘this’ argument discards qualifiers [-fpermissive]
+   21 |     for (const auto &v : vs)
+      |     ^~~
+In file included from d13.cpp:1:
+/usr/include/c++/11/ranges:1500:7: note:   in call to ‘constexpr auto std::ranges::filter_view<_Vp, _Pred>::end() [with _Vp = std::ranges::ref_view<std::vector<Order> >; _Pred = main()::<lambda(const Order&)>]’
+ 1500 |       end()
+      |       ^~~
+d13.cpp:23:19: error: no match for ‘operator<<’ (operand types are ‘std::ostream’ {aka ‘std::basic_ostream<char>’} and ‘const Order’)
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:108:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::basic_ostream<_CharT, _Traits>::__ostream_type& (*)(std::basic_ostream<_CharT, _Traits>::__ostream_type&)) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  108 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:108:36: note:   no known conversion for argument 1 from ‘const Order’ to ‘std::basic_ostream<char>::__ostream_type& (*)(std::basic_ostream<char>::__ostream_type&)’ {aka ‘std::basic_ostream<char>& (*)(std::basic_ostream<char>&)’}
+  108 |       operator<<(__ostream_type& (*__pf)(__ostream_type&))
+      |                  ~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/11/ostream:117:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::basic_ostream<_CharT, _Traits>::__ios_type& (*)(std::basic_ostream<_CharT, _Traits>::__ios_type&)) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>; std::basic_ostream<_CharT, _Traits>::__ios_type = std::basic_ios<char>]’
+  117 |       operator<<(__ios_type& (*__pf)(__ios_type&))
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:117:32: note:   no known conversion for argument 1 from ‘const Order’ to ‘std::basic_ostream<char>::__ios_type& (*)(std::basic_ostream<char>::__ios_type&)’ {aka ‘std::basic_ios<char>& (*)(std::basic_ios<char>&)’}
+  117 |       operator<<(__ios_type& (*__pf)(__ios_type&))
+      |                  ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~
+/usr/include/c++/11/ostream:127:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::ios_base& (*)(std::ios_base&)) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  127 |       operator<<(ios_base& (*__pf) (ios_base&))
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:127:30: note:   no known conversion for argument 1 from ‘const Order’ to ‘std::ios_base& (*)(std::ios_base&)’
+  127 |       operator<<(ios_base& (*__pf) (ios_base&))
+      |                  ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~
+/usr/include/c++/11/ostream:166:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  166 |       operator<<(long __n)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:166:23: note:   no known conversion for argument 1 from ‘const Order’ to ‘long int’
+  166 |       operator<<(long __n)
+      |                  ~~~~~^~~
+/usr/include/c++/11/ostream:170:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  170 |       operator<<(unsigned long __n)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:170:32: note:   no known conversion for argument 1 from ‘const Order’ to ‘long unsigned int’
+  170 |       operator<<(unsigned long __n)
+      |                  ~~~~~~~~~~~~~~^~~
+/usr/include/c++/11/ostream:174:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(bool) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  174 |       operator<<(bool __n)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:174:23: note:   no known conversion for argument 1 from ‘const Order’ to ‘bool’
+  174 |       operator<<(bool __n)
+      |                  ~~~~~^~~
+In file included from /usr/include/c++/11/ostream:829,
+                 from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/bits/ostream.tcc:91:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(short int) [with _CharT = char; _Traits = std::char_traits<char>]’
+   91 |     basic_ostream<_CharT, _Traits>::
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/11/bits/ostream.tcc:92:22: note:   no known conversion for argument 1 from ‘const Order’ to ‘short int’
+   92 |     operator<<(short __n)
+      |                ~~~~~~^~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:181:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(short unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  181 |       operator<<(unsigned short __n)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:181:33: note:   no known conversion for argument 1 from ‘const Order’ to ‘short unsigned int’
+  181 |       operator<<(unsigned short __n)
+      |                  ~~~~~~~~~~~~~~~^~~
+In file included from /usr/include/c++/11/ostream:829,
+                 from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/bits/ostream.tcc:105:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(int) [with _CharT = char; _Traits = std::char_traits<char>]’
+  105 |     basic_ostream<_CharT, _Traits>::
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/11/bits/ostream.tcc:106:20: note:   no known conversion for argument 1 from ‘const Order’ to ‘int’
+  106 |     operator<<(int __n)
+      |                ~~~~^~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:192:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  192 |       operator<<(unsigned int __n)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:192:31: note:   no known conversion for argument 1 from ‘const Order’ to ‘unsigned int’
+  192 |       operator<<(unsigned int __n)
+      |                  ~~~~~~~~~~~~~^~~
+/usr/include/c++/11/ostream:201:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  201 |       operator<<(long long __n)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:201:28: note:   no known conversion for argument 1 from ‘const Order’ to ‘long long int’
+  201 |       operator<<(long long __n)
+      |                  ~~~~~~~~~~^~~
+/usr/include/c++/11/ostream:205:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long long unsigned int) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  205 |       operator<<(unsigned long long __n)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:205:37: note:   no known conversion for argument 1 from ‘const Order’ to ‘long long unsigned int’
+  205 |       operator<<(unsigned long long __n)
+      |                  ~~~~~~~~~~~~~~~~~~~^~~
+/usr/include/c++/11/ostream:220:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(double) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  220 |       operator<<(double __f)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:220:25: note:   no known conversion for argument 1 from ‘const Order’ to ‘double’
+  220 |       operator<<(double __f)
+      |                  ~~~~~~~^~~
+/usr/include/c++/11/ostream:224:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(float) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  224 |       operator<<(float __f)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:224:24: note:   no known conversion for argument 1 from ‘const Order’ to ‘float’
+  224 |       operator<<(float __f)
+      |                  ~~~~~~^~~
+/usr/include/c++/11/ostream:232:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(long double) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  232 |       operator<<(long double __f)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:232:30: note:   no known conversion for argument 1 from ‘const Order’ to ‘long double’
+  232 |       operator<<(long double __f)
+      |                  ~~~~~~~~~~~~^~~
+/usr/include/c++/11/ostream:245:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(const void*) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>]’
+  245 |       operator<<(const void* __p)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:245:30: note:   no known conversion for argument 1 from ‘const Order’ to ‘const void*’
+  245 |       operator<<(const void* __p)
+      |                  ~~~~~~~~~~~~^~~
+/usr/include/c++/11/ostream:250:7: note: candidate: ‘std::basic_ostream<_CharT, _Traits>::__ostream_type& std::basic_ostream<_CharT, _Traits>::operator<<(std::nullptr_t) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__ostream_type = std::basic_ostream<char>; std::nullptr_t = std::nullptr_t]’
+  250 |       operator<<(nullptr_t)
+      |       ^~~~~~~~
+/usr/include/c++/11/ostream:250:18: note:   no known conversion for argument 1 from ‘const Order’ to ‘std::nullptr_t’
+  250 |       operator<<(nullptr_t)
+      |                  ^~~~~~~~~
+In file included from /usr/include/c++/11/ostream:829,
+                 from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/bits/ostream.tcc:119:5: note: candidate: ‘std::basic_ostream<_CharT, _Traits>& std::basic_ostream<_CharT, _Traits>::operator<<(std::basic_ostream<_CharT, _Traits>::__streambuf_type*) [with _CharT = char; _Traits = std::char_traits<char>; std::basic_ostream<_CharT, _Traits>::__streambuf_type = std::basic_streambuf<char>]’
+  119 |     basic_ostream<_CharT, _Traits>::
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/c++/11/bits/ostream.tcc:120:34: note:   no known conversion for argument 1 from ‘const Order’ to ‘std::basic_ostream<char>::__streambuf_type*’ {aka ‘std::basic_streambuf<char>*’}
+  120 |     operator<<(__streambuf_type* __sbin)
+      |                ~~~~~~~~~~~~~~~~~~^~~~~~
+In file included from /usr/include/c++/11/bits/basic_string.h:48,
+                 from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/string_view:667:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, std::basic_string_view<_CharT, _Traits>)’
+  667 |     operator<<(basic_ostream<_CharT, _Traits>& __os,
+      |     ^~~~~~~~
+/usr/include/c++/11/string_view:667:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   ‘Order’ is not derived from ‘std::basic_string_view<_CharT, _Traits>’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6531:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 6531 |     operator<<(basic_ostream<_CharT, _Traits>& __os,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6531:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   ‘const Order’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/bits/ios_base.h:46,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/system_error:279:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const std::error_code&)’
+  279 |     operator<<(basic_ostream<_CharT, _Traits>& __os, const error_code& __e)
+      |     ^~~~~~~~
+/usr/include/c++/11/system_error:279:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘const std::error_code&’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:513:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, _CharT)’
+  513 |     operator<<(basic_ostream<_CharT, _Traits>& __out, _CharT __c)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:513:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   deduced conflicting types for parameter ‘_CharT’ (‘char’ and ‘Order’)
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:518:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, char)’
+  518 |     operator<<(basic_ostream<_CharT, _Traits>& __out, char __c)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:518:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:524:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, char)’
+  524 |     operator<<(basic_ostream<char, _Traits>& __out, char __c)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:524:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:530:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, signed char)’
+  530 |     operator<<(basic_ostream<char, _Traits>& __out, signed char __c)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:530:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘signed char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:535:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, unsigned char)’
+  535 |     operator<<(basic_ostream<char, _Traits>& __out, unsigned char __c)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:535:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘unsigned char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:544:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, wchar_t)’ (deleted)
+  544 |     operator<<(basic_ostream<char, _Traits>&, wchar_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:544:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘wchar_t’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:549:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, char8_t)’ (deleted)
+  549 |     operator<<(basic_ostream<char, _Traits>&, char8_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:549:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘char8_t’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:554:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, char16_t)’ (deleted)
+  554 |     operator<<(basic_ostream<char, _Traits>&, char16_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:554:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘char16_t’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:558:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, char32_t)’ (deleted)
+  558 |     operator<<(basic_ostream<char, _Traits>&, char32_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:558:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘char32_t’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:564:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(std::basic_ostream<wchar_t, _Traits>&, char8_t)’ (deleted)
+  564 |     operator<<(basic_ostream<wchar_t, _Traits>&, char8_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:564:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   mismatched types ‘wchar_t’ and ‘char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:569:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(std::basic_ostream<wchar_t, _Traits>&, char16_t)’ (deleted)
+  569 |     operator<<(basic_ostream<wchar_t, _Traits>&, char16_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:569:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   mismatched types ‘wchar_t’ and ‘char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:573:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(std::basic_ostream<wchar_t, _Traits>&, char32_t)’ (deleted)
+  573 |     operator<<(basic_ostream<wchar_t, _Traits>&, char32_t) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:573:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   mismatched types ‘wchar_t’ and ‘char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:594:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const _CharT*)’
+  594 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const _CharT* __s)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:594:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   mismatched types ‘const _CharT*’ and ‘Order’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/ostream:829,
+                 from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/bits/ostream.tcc:321:5: note: candidate: ‘template<class _CharT, class _Traits> std::basic_ostream<_CharT, _Traits>& std::operator<<(std::basic_ostream<_CharT, _Traits>&, const char*)’
+  321 |     operator<<(basic_ostream<_CharT, _Traits>& __out, const char* __s)
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/ostream.tcc:321:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘const char*’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:611:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const char*)’
+  611 |     operator<<(basic_ostream<char, _Traits>& __out, const char* __s)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:611:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘const char*’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:624:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const signed char*)’
+  624 |     operator<<(basic_ostream<char, _Traits>& __out, const signed char* __s)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:624:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘const signed char*’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:629:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const unsigned char*)’
+  629 |     operator<<(basic_ostream<char, _Traits>& __out, const unsigned char* __s)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:629:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘const unsigned char*’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:638:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const wchar_t*)’ (deleted)
+  638 |     operator<<(basic_ostream<char, _Traits>&, const wchar_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:638:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘const wchar_t*’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:643:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const char8_t*)’ (deleted)
+  643 |     operator<<(basic_ostream<char, _Traits>&, const char8_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:643:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘const char8_t*’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:648:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const char16_t*)’ (deleted)
+  648 |     operator<<(basic_ostream<char, _Traits>&, const char16_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:648:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘const char16_t*’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:652:5: note: candidate: ‘template<class _Traits> std::basic_ostream<char, _Traits>& std::operator<<(std::basic_ostream<char, _Traits>&, const char32_t*)’ (deleted)
+  652 |     operator<<(basic_ostream<char, _Traits>&, const char32_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:652:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   cannot convert ‘v’ (type ‘const Order’) to type ‘const char32_t*’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:658:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(std::basic_ostream<wchar_t, _Traits>&, const char8_t*)’ (deleted)
+  658 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char8_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:658:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   mismatched types ‘wchar_t’ and ‘char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:663:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(std::basic_ostream<wchar_t, _Traits>&, const char16_t*)’ (deleted)
+  663 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char16_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:663:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   mismatched types ‘wchar_t’ and ‘char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:667:5: note: candidate: ‘template<class _Traits> std::basic_ostream<wchar_t, _Traits>& std::operator<<(std::basic_ostream<wchar_t, _Traits>&, const char32_t*)’ (deleted)
+  667 |     operator<<(basic_ostream<wchar_t, _Traits>&, const char32_t*) = delete;
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:667:5: note:   template argument deduction/substitution failed:
+d13.cpp:23:19: note:   mismatched types ‘wchar_t’ and ‘char’
+   23 |         std::cout << v;
+      |         ~~~~~~~~~~^~~~
+In file included from /usr/include/c++/11/iostream:39,
+                 from d13.cpp:3:
+/usr/include/c++/11/ostream:750:5: note: candidate: ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&)’
+  750 |     operator<<(_Ostream&& __os, const _Tp& __x)
+      |     ^~~~~~~~
+/usr/include/c++/11/ostream:750:5: note:   template argument deduction/substitution failed:
+/usr/include/c++/11/ostream: In substitution of ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ostream<char>&; _Tp = Order]’:
+d13.cpp:23:19:   required from ‘void dump(const auto:19&) [with auto:19 = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >]’
+d13.cpp:42:9:   required from here
+/usr/include/c++/11/ostream:750:5: error: template constraint failure for ‘template<class _Os, class _Tp>  requires (__derived_from_ios_base<_Os>) && requires(_Os& __os, const _Tp& __t) {__os << __t;} using __rvalue_stream_insertion_t = _Os&&’
+/usr/include/c++/11/ostream:750:5: note: constraints not satisfied
+/usr/include/c++/11/ostream: In substitution of ‘template<class _Os, class _Tp>  requires (__derived_from_ios_base<_Os>) && requires(_Os& __os, const _Tp& __t) {__os << __t;} using __rvalue_stream_insertion_t = _Os&& [with _Os = std::basic_ostream<char>&; _Tp = Order]’:
+/usr/include/c++/11/ostream:750:5:   required by substitution of ‘template<class _Ostream, class _Tp> _Ostream&& std::operator<<(_Ostream&&, const _Tp&) [with _Ostream = std::basic_ostream<char>&; _Tp = Order]’
+d13.cpp:23:19:   required from ‘void dump(const auto:19&) [with auto:19 = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >]’
+d13.cpp:42:9:   required from here
+/usr/include/c++/11/ostream:717:13:   required for the satisfaction of ‘__derived_from_ios_base<_Os>’ [with _Os = std::basic_ostream<char, std::char_traits<char> >&]
+/usr/include/c++/11/ostream:717:39: note: the expression ‘is_class_v<_Tp> [with _Tp = std::basic_ostream<char, std::char_traits<char> >&]’ evaluated to ‘false’
+  717 |     concept __derived_from_ios_base = is_class_v<_Tp>
+      |                                       ^~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h: In instantiation of ‘constexpr void std::__sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator; _Compare = __gnu_cxx::__ops::_Iter_comp_iter<main()::<lambda(const Order&, const Order&)> >]’:
+/usr/include/c++/11/bits/stl_algo.h:4875:18:   required from ‘constexpr void std::sort(_RAIter, _RAIter, _Compare) [with _RAIter = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator; _Compare = main()::<lambda(const Order&, const Order&)>]’
+d13.cpp:40:14:   required from here
+/usr/include/c++/11/bits/stl_algo.h:1955:50: error: no match for ‘operator-’ (operand types are ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’)
+ 1955 |                                 std::__lg(__last - __first) * 2,
+      |                                           ~~~~~~~^~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:577:5: note: candidate: ‘template<class _IteratorL, class _IteratorR> constexpr decltype ((__y.base() - __x.base())) std::operator-(const std::reverse_iterator<_IteratorL>&, const std::reverse_iterator<_IteratorR>&)’
+  577 |     operator-(const reverse_iterator<_IteratorL>& __x,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:577:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1955:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::reverse_iterator<_IteratorL>’
+ 1955 |                                 std::__lg(__last - __first) * 2,
+      |                                           ~~~~~~~^~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:1693:5: note: candidate: ‘template<class _IteratorL, class _IteratorR> constexpr decltype ((__x.base() - __y.base())) std::operator-(const std::move_iterator<_IteratorL>&, const std::move_iterator<_IteratorR>&)’
+ 1693 |     operator-(const move_iterator<_IteratorL>& __x,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:1693:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1955:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::move_iterator<_IteratorL>’
+ 1955 |                                 std::__lg(__last - __first) * 2,
+      |                                           ~~~~~~~^~~~~~~~~
+/usr/include/c++/11/bits/stl_algo.h: In instantiation of ‘constexpr void std::__final_insertion_sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator; _Compare = __gnu_cxx::__ops::_Iter_comp_iter<main()::<lambda(const Order&, const Order&)> >]’:
+/usr/include/c++/11/bits/stl_algo.h:1957:31:   required from ‘constexpr void std::__sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator; _Compare = __gnu_cxx::__ops::_Iter_comp_iter<main()::<lambda(const Order&, const Order&)> >]’
+/usr/include/c++/11/bits/stl_algo.h:4875:18:   required from ‘constexpr void std::sort(_RAIter, _RAIter, _Compare) [with _RAIter = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator; _Compare = main()::<lambda(const Order&, const Order&)>]’
+d13.cpp:40:14:   required from here
+/usr/include/c++/11/bits/stl_algo.h:1864:18: error: no match for ‘operator-’ (operand types are ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’)
+ 1864 |       if (__last - __first > int(_S_threshold))
+      |           ~~~~~~~^~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:577:5: note: candidate: ‘template<class _IteratorL, class _IteratorR> constexpr decltype ((__y.base() - __x.base())) std::operator-(const std::reverse_iterator<_IteratorL>&, const std::reverse_iterator<_IteratorR>&)’
+  577 |     operator-(const reverse_iterator<_IteratorL>& __x,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:577:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1864:18: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::reverse_iterator<_IteratorL>’
+ 1864 |       if (__last - __first > int(_S_threshold))
+      |           ~~~~~~~^~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:1693:5: note: candidate: ‘template<class _IteratorL, class _IteratorR> constexpr decltype ((__x.base() - __y.base())) std::operator-(const std::move_iterator<_IteratorL>&, const std::move_iterator<_IteratorR>&)’
+ 1693 |     operator-(const move_iterator<_IteratorL>& __x,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:1693:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1864:18: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::move_iterator<_IteratorL>’
+ 1864 |       if (__last - __first > int(_S_threshold))
+      |           ~~~~~~~^~~~~~~~~
+/usr/include/c++/11/bits/stl_algo.h:1866:50: error: no match for ‘operator+’ (operand types are ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ and ‘int’)
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:585:5: note: candidate: ‘template<class _Iterator> constexpr std::reverse_iterator<_IteratorL> std::operator+(typename std::reverse_iterator<_IteratorL>::difference_type, const std::reverse_iterator<_IteratorL>&)’
+  585 |     operator+(typename reverse_iterator<_Iterator>::difference_type __n,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:585:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   mismatched types ‘const std::reverse_iterator<_IteratorL>’ and ‘int’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:1700:5: note: candidate: ‘template<class _Iterator> constexpr std::move_iterator<_IteratorL> std::operator+(typename std::move_iterator<_IteratorL>::difference_type, const std::move_iterator<_IteratorL>&)’
+ 1700 |     operator+(typename move_iterator<_Iterator>::difference_type __n,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:1700:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   mismatched types ‘const std::move_iterator<_IteratorL>’ and ‘int’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6095:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 6095 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6095:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:56,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.tcc:1169:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 1169 |     operator+(const _CharT* __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.tcc:1169:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   mismatched types ‘const _CharT*’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:56,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.tcc:1189:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 1189 |     operator+(_CharT __lhs, const basic_string<_CharT, _Traits, _Alloc>& __rhs)
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.tcc:1189:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   mismatched types ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’ and ‘int’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6132:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, const _CharT*)’
+ 6132 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6132:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6148:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, _CharT)’
+ 6148 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs, _CharT __rhs)
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6148:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6160:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 6160 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6160:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6166:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6166 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6166:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6172:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6172 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6172:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6194:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6194 |     operator+(const _CharT* __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6194:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   mismatched types ‘const _CharT*’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6200:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6200 |     operator+(_CharT __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6200:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   mismatched types ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’ and ‘int’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6206:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const _CharT*)’
+ 6206 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6206:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6212:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, _CharT)’
+ 6212 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6212:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1866:50: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1866 |           std::__insertion_sort(__first, __first + int(_S_threshold), __comp);
+      |                                          ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+/usr/include/c++/11/bits/stl_algo.h:1867:51: error: no match for ‘operator+’ (operand types are ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ and ‘int’)
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:585:5: note: candidate: ‘template<class _Iterator> constexpr std::reverse_iterator<_IteratorL> std::operator+(typename std::reverse_iterator<_IteratorL>::difference_type, const std::reverse_iterator<_IteratorL>&)’
+  585 |     operator+(typename reverse_iterator<_Iterator>::difference_type __n,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:585:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   mismatched types ‘const std::reverse_iterator<_IteratorL>’ and ‘int’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:1700:5: note: candidate: ‘template<class _Iterator> constexpr std::move_iterator<_IteratorL> std::operator+(typename std::move_iterator<_IteratorL>::difference_type, const std::move_iterator<_IteratorL>&)’
+ 1700 |     operator+(typename move_iterator<_Iterator>::difference_type __n,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:1700:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   mismatched types ‘const std::move_iterator<_IteratorL>’ and ‘int’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6095:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 6095 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6095:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:56,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.tcc:1169:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 1169 |     operator+(const _CharT* __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.tcc:1169:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   mismatched types ‘const _CharT*’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:56,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.tcc:1189:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 1189 |     operator+(_CharT __lhs, const basic_string<_CharT, _Traits, _Alloc>& __rhs)
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.tcc:1189:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   mismatched types ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’ and ‘int’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6132:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, const _CharT*)’
+ 6132 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6132:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6148:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, _CharT)’
+ 6148 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs, _CharT __rhs)
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6148:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6160:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 6160 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6160:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6166:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6166 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6166:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6172:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6172 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6172:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6194:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6194 |     operator+(const _CharT* __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6194:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   mismatched types ‘const _CharT*’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6200:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6200 |     operator+(_CharT __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6200:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   mismatched types ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’ and ‘int’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6206:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const _CharT*)’
+ 6206 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6206:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6212:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, _CharT)’
+ 6212 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6212:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1867:51: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1867 |           std::__unguarded_insertion_sort(__first + int(_S_threshold), __last,
+      |                                           ~~~~~~~~^~~~~~~~~~~~~~~~~~~
+/usr/include/c++/11/bits/stl_algo.h: In instantiation of ‘constexpr void std::__insertion_sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator; _Compare = __gnu_cxx::__ops::_Iter_comp_iter<main()::<lambda(const Order&, const Order&)> >]’:
+/usr/include/c++/11/bits/stl_algo.h:1871:23:   required from ‘constexpr void std::__final_insertion_sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator; _Compare = __gnu_cxx::__ops::_Iter_comp_iter<main()::<lambda(const Order&, const Order&)> >]’
+/usr/include/c++/11/bits/stl_algo.h:1957:31:   required from ‘constexpr void std::__sort(_RandomAccessIterator, _RandomAccessIterator, _Compare) [with _RandomAccessIterator = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator; _Compare = __gnu_cxx::__ops::_Iter_comp_iter<main()::<lambda(const Order&, const Order&)> >]’
+/usr/include/c++/11/bits/stl_algo.h:4875:18:   required from ‘constexpr void std::sort(_RAIter, _RAIter, _Compare) [with _RAIter = std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator; _Compare = main()::<lambda(const Order&, const Order&)>]’
+d13.cpp:40:14:   required from here
+/usr/include/c++/11/bits/stl_algo.h:1824:48: error: no match for ‘operator+’ (operand types are ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ and ‘int’)
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:585:5: note: candidate: ‘template<class _Iterator> constexpr std::reverse_iterator<_IteratorL> std::operator+(typename std::reverse_iterator<_IteratorL>::difference_type, const std::reverse_iterator<_IteratorL>&)’
+  585 |     operator+(typename reverse_iterator<_Iterator>::difference_type __n,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:585:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   mismatched types ‘const std::reverse_iterator<_IteratorL>’ and ‘int’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:1700:5: note: candidate: ‘template<class _Iterator> constexpr std::move_iterator<_IteratorL> std::operator+(typename std::move_iterator<_IteratorL>::difference_type, const std::move_iterator<_IteratorL>&)’
+ 1700 |     operator+(typename move_iterator<_Iterator>::difference_type __n,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:1700:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   mismatched types ‘const std::move_iterator<_IteratorL>’ and ‘int’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6095:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 6095 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6095:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:56,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.tcc:1169:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 1169 |     operator+(const _CharT* __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.tcc:1169:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   mismatched types ‘const _CharT*’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:56,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.tcc:1189:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 1189 |     operator+(_CharT __lhs, const basic_string<_CharT, _Traits, _Alloc>& __rhs)
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.tcc:1189:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   mismatched types ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’ and ‘int’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6132:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, const _CharT*)’
+ 6132 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6132:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6148:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, _CharT)’
+ 6148 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs, _CharT __rhs)
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6148:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6160:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 6160 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6160:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6166:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6166 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6166:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6172:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6172 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6172:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6194:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6194 |     operator+(const _CharT* __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6194:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   mismatched types ‘const _CharT*’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6200:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6200 |     operator+(_CharT __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6200:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   mismatched types ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’ and ‘int’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6206:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const _CharT*)’
+ 6206 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6206:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6212:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, _CharT)’
+ 6212 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6212:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/string:52,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1824:48: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1824 |       for (_RandomAccessIterator __i = __first + 1; __i != __last; ++__i)
+      |                                        ~~~~~~~~^~~
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: error: no match for ‘operator+’ (operand types are ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ and ‘int’)
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:585:5: note: candidate: ‘template<class _Iterator> constexpr std::reverse_iterator<_IteratorL> std::operator+(typename std::reverse_iterator<_IteratorL>::difference_type, const std::reverse_iterator<_IteratorL>&)’
+  585 |     operator+(typename reverse_iterator<_Iterator>::difference_type __n,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:585:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   mismatched types ‘const std::reverse_iterator<_IteratorL>’ and ‘int’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/iterator:63,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_iterator.h:1700:5: note: candidate: ‘template<class _Iterator> constexpr std::move_iterator<_IteratorL> std::operator+(typename std::move_iterator<_IteratorL>::difference_type, const std::move_iterator<_IteratorL>&)’
+ 1700 |     operator+(typename move_iterator<_Iterator>::difference_type __n,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/stl_iterator.h:1700:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   mismatched types ‘const std::move_iterator<_IteratorL>’ and ‘int’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6095:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 6095 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6095:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:56,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.tcc:1169:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 1169 |     operator+(const _CharT* __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.tcc:1169:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   mismatched types ‘const _CharT*’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:56,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.tcc:1189:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 1189 |     operator+(_CharT __lhs, const basic_string<_CharT, _Traits, _Alloc>& __rhs)
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.tcc:1189:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   mismatched types ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’ and ‘int’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6132:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, const _CharT*)’
+ 6132 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6132:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6148:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, _CharT)’
+ 6148 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs, _CharT __rhs)
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6148:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6160:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&)’
+ 6160 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6160:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6166:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6166 |     operator+(const basic_string<_CharT, _Traits, _Alloc>& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6166:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘const std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6172:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6172 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6172:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6194:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(const _CharT*, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6194 |     operator+(const _CharT* __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6194:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   mismatched types ‘const _CharT*’ and ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6200:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(_CharT, std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&)’
+ 6200 |     operator+(_CharT __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6200:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   mismatched types ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’ and ‘int’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6206:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, const _CharT*)’
+ 6206 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6206:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/11/string:55,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/basic_string.h:6212:5: note: candidate: ‘template<class _CharT, class _Traits, class _Alloc> std::__cxx11::basic_string<_CharT, _Traits, _Allocator> std::operator+(std::__cxx11::basic_string<_CharT, _Traits, _Allocator>&&, _CharT)’
+ 6212 |     operator+(basic_string<_CharT, _Traits, _Alloc>&& __lhs,
+      |     ^~~~~~~~
+/usr/include/c++/11/bits/basic_string.h:6212:5: note:   template argument deduction/substitution failed:
+In file included from /usr/include/c++/11/bits/char_traits.h:39,
+                 from /usr/include/c++/11/string:40,
+                 from /usr/include/c++/11/bits/locale_classes.h:40,
+                 from /usr/include/c++/11/bits/ios_base.h:41,
+                 from /usr/include/c++/11/streambuf:41,
+                 from /usr/include/c++/11/bits/streambuf_iterator.h:35,
+                 from /usr/include/c++/11/iterator:66,
+                 from /usr/include/c++/11/ranges:43,
+                 from d13.cpp:1:
+/usr/include/c++/11/bits/stl_algo.h:1830:15: note:   ‘std::ranges::filter_view<std::ranges::ref_view<std::vector<Order> >, main()::<lambda(const Order&)> >::_Iterator’ is not derived from ‘std::__cxx11::basic_string<_CharT, _Traits, _Allocator>’
+ 1830 |               _GLIBCXX_MOVE_BACKWARD3(__first, __i, __i + 1);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~
