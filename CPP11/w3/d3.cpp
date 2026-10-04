@@ -101,11 +101,12 @@ public:
         // std::function<void(const E &)> fn_;
         Handler<E> handler_;
         std::atomic<bool> active_ = true;
+        std::weak_ptr<void> owner_;
 
     public:
         // Sub(size_t s, std::function<void(const E &)> fn) : subid_(s), fn_(std::move(fn)) {}
         template <class F>
-        Sub(size_t s, F &&fn) : subid_(s), handler_(std::forward<F>(fn)) {}
+        Sub(size_t s, F &&fn, std::weak_ptr<void> owner) : subid_(s), handler_(std::forward<F>(fn)), owner_(owner) {}
         ~Sub() = default;
         Sub(const Sub &) = delete;
         Sub(Sub &&) = delete;
@@ -126,7 +127,8 @@ public:
         size_t count = 0;
         for (auto &sub : snapshot)
         {
-            if (sub->active_.load())
+            auto keep = sub->owner_.lock();
+            if (sub->active_.load() && keep)
             {
                 sub->handler_(event);
                 ++count;
@@ -141,9 +143,9 @@ public:
     }
 
     template <class F>
-    size_t add(F &&sub)
+    size_t add(F &&sub, std::weak_ptr<void> owner)
     {
-        subs_.emplace_back(std::make_shared<Sub>(++next_id, std::forward<F>(sub)));
+        subs_.emplace_back(std::make_shared<Sub>(++next_id, std::forward<F>(sub), owner));
         std::cout << channel_type << ":" << next_id << " subscribed." << std::endl;
         return next_id;
     }
@@ -216,7 +218,7 @@ public:
     EventBus() { state_ = std::make_shared<detail::BusState>(); }
     ~EventBus() { state_.reset(); }
     template <class E, class E2 = std::remove_cv_t<E>, class F>
-    Subscription subscribe(F &&handle_fn)
+    Subscription subscribe(F &&handle_fn, std::weak_ptr<void> owner)
     {
         auto tid = std::type_index(typeid(E2));
         size_t subid = 0;
@@ -228,7 +230,7 @@ public:
                 state_->channels_.emplace(tid, std::make_shared<Channel<E2>>());
             }
             auto channel = std::static_pointer_cast<Channel<E2>>(state_->channels_.at(tid));
-            subid = channel->add(std::forward<F>(handle_fn));
+            subid = channel->add(std::forward<F>(handle_fn), owner);
         }
         return Subscription(tid, subid, std::weak_ptr<detail::BusState>(state_));
     }
@@ -290,29 +292,19 @@ void session_function(EventBus &bus, size_t count)
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
+struct Monitor
+{
+    std::vector<Subscription> sub_tokens_;
+};
 int main()
 {
     EventBus bus;
+
+    auto dummy_monitor = std::make_shared<Monitor>();
     std::unique_ptr<EventLogout> event_ptr = std::make_unique<EventLogout>(
         0,
         "dummy",
         std::chrono::system_clock::now());
-    auto sub1 = bus.subscribe<EventLogin>([](const EventLogin &e)
-                                          { std::cout << "User login, "
-                                                      << "uid=" << e.uid << ", uname=" << e.uname
-                                                      << ", client_type=" << e.client_type
-                                                      << ", login_time="
-                                                      << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time)
-                                                      << std::endl; });
-    auto sub2 = bus.subscribe<EventLogout>([](const EventLogout &e)
-                                           { std::cout << "User logout, "
-                                                       << "uid=" << e.uid << ", uname=" << e.uname
-                                                       << ", login_time="
-                                                       << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time)
-                                                       << std::endl; });
-    auto sub3 = bus.subscribe<EventLogin>([](const EventLogin &e)
-                                          { std::cout << "User " << e.uname << " login" << std::endl; });
-
     auto dummy_logout_fn = [dummy_event = std::move(event_ptr)](const EventLogout &e)
     {
         std::cout << "User " << e.uname
@@ -321,15 +313,38 @@ int main()
                   << std::endl;
         std::cout << dummy_event->uname << " login at " << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time) << std::endl;
     };
-    auto sub4 = bus.subscribe<EventLogout>(std::move(dummy_logout_fn));
+    dummy_monitor->sub_tokens_.emplace_back(bus.subscribe<EventLogout>(std::move(dummy_logout_fn), dummy_monitor));
 
-    std::vector<std::thread> sessions;
-    for (size_t i = 0; i < 10; i++)
+    std::vector<Subscription> subs_tokens;
+    std::vector<std::shared_ptr<Monitor>> monitors;
+    for (size_t i = 0; i < 2; i++)
     {
-        sessions.emplace_back(session_function, std::ref(bus), 100);
+        auto monitor = std::make_shared<Monitor>();
+        monitor->sub_tokens_.emplace_back(
+            bus.subscribe<EventLogin>([](const EventLogin &e)
+                                      { std::cout << "User login, "
+                                                  << "uid=" << e.uid << ", uname=" << e.uname
+                                                  << ", client_type=" << e.client_type
+                                                  << ", login_time="
+                                                  << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time)
+                                                  << std::endl; }, monitor));
+        monitor->sub_tokens_.emplace_back(
+            bus.subscribe<EventLogout>([](const EventLogout &e)
+                                       { std::cout << "User logout, "
+                                                   << "uid=" << e.uid << ", uname=" << e.uname
+                                                   << ", login_time="
+                                                   << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time)
+                                                   << std::endl; }, monitor));
+        monitors.emplace_back(std::move(monitor));
     }
 
-    for (auto &ss : sessions)
+    std::vector<std::thread> worker_thhreads;
+    for (size_t i = 0; i < 10; i++)
+    {
+        worker_thhreads.emplace_back(session_function, std::ref(bus), 100);
+    }
+
+    for (auto &ss : worker_thhreads)
     {
         ss.join();
     }
