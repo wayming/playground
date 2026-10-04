@@ -98,13 +98,14 @@ public:
     struct Sub
     {
         size_t subid_ = 0;
-        std::function<void(const E &)> fn_;
-        // Handler<E> handler_;
+        // std::function<void(const E &)> fn_;
+        Handler<E> handler_;
         std::atomic<bool> active_ = true;
 
     public:
-        Sub(size_t s, std::function<void(const E &)> fn) : subid_(s), fn_(std::move(fn)) {}
-        // Sub(size_t s, std::function<void(const E &)> &&fn) : subid_(s), fn_(std::forward<std::function<void(const E &)>>(fn)) {}
+        // Sub(size_t s, std::function<void(const E &)> fn) : subid_(s), fn_(std::move(fn)) {}
+        template <class F>
+        Sub(size_t s, F &&fn) : subid_(s), handler_(std::forward<F>(fn)) {}
         ~Sub() = default;
         Sub(const Sub &) = delete;
         Sub(Sub &&) = delete;
@@ -127,7 +128,7 @@ public:
         {
             if (sub->active_.load())
             {
-                sub->fn_(event);
+                sub->handler_(event);
                 ++count;
             }
         }
@@ -139,9 +140,10 @@ public:
         return subs_;
     }
 
-    size_t add(std::function<void(const E &)> sub)
+    template <class F>
+    size_t add(F &&sub)
     {
-        subs_.emplace_back(std::make_shared<Sub>(++next_id, std::move(sub)));
+        subs_.emplace_back(std::make_shared<Sub>(++next_id, std::forward<F>(sub)));
         std::cout << channel_type << ":" << next_id << " subscribed." << std::endl;
         return next_id;
     }
@@ -213,8 +215,8 @@ private:
 public:
     EventBus() { state_ = std::make_shared<detail::BusState>(); }
     ~EventBus() { state_.reset(); }
-    template <class E, class E2 = std::remove_cv_t<E>>
-    Subscription subscribe(std::function<void(const E &)> handle_fn)
+    template <class E, class E2 = std::remove_cv_t<E>, class F>
+    Subscription subscribe(F &&handle_fn)
     {
         auto tid = std::type_index(typeid(E2));
         size_t subid = 0;
@@ -226,7 +228,7 @@ public:
                 state_->channels_.emplace(tid, std::make_shared<Channel<E2>>());
             }
             auto channel = std::static_pointer_cast<Channel<E2>>(state_->channels_.at(tid));
-            subid = channel->add(std::move(handle_fn));
+            subid = channel->add(std::forward<F>(handle_fn));
         }
         return Subscription(tid, subid, std::weak_ptr<detail::BusState>(state_));
     }
@@ -291,6 +293,10 @@ void session_function(EventBus &bus, size_t count)
 int main()
 {
     EventBus bus;
+    std::unique_ptr<EventLogout> event_ptr = std::make_unique<EventLogout>(
+        0,
+        "dummy",
+        std::chrono::system_clock::now());
     auto sub1 = bus.subscribe<EventLogin>([](const EventLogin &e)
                                           { std::cout << "User login, "
                                                       << "uid=" << e.uid << ", uname=" << e.uname
@@ -307,11 +313,15 @@ int main()
     auto sub3 = bus.subscribe<EventLogin>([](const EventLogin &e)
                                           { std::cout << "User " << e.uname << " login" << std::endl; });
 
-    auto sub4 = bus.subscribe<EventLogout>([](const EventLogout &e)
-                                           { std::cout << "User " << e.uname
-                                                       << " logout, live time "
-                                                       << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - e.login_time)
-                                                       << std::endl; });
+    auto dummy_logout_fn = [dummy_event = std::move(event_ptr)](const EventLogout &e)
+    {
+        std::cout << "User " << e.uname
+                  << " logout, live time "
+                  << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - e.login_time)
+                  << std::endl;
+        std::cout << dummy_event->uname << " login at " << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time) << std::endl;
+    };
+    auto sub4 = bus.subscribe<EventLogout>(std::move(dummy_logout_fn));
 
     std::vector<std::thread> sessions;
     for (size_t i = 0; i < 10; i++)
