@@ -8,6 +8,39 @@
 #include <utility>
 #include <atomic>
 #include <mutex>
+#include <thread>
+#include <sstream>
+
+template <class E>
+class Handler
+{
+    struct Concept
+    {
+        virtual ~Concept() = default;
+        virtual void call(const E &) = 0;
+    };
+
+    template <class F>
+    struct Model final : public Concept
+    {
+        F f;
+        template <class G>
+        explicit Model(G &&g) : f(std::forward<G>(g)) {};
+        void call(const E &e) override
+        {
+            f(e);
+        }
+    };
+    std::unique_ptr<Concept> ptr_;
+
+public:
+    template <class F>
+        requires(!std::same_as<std::remove_cvref_t<F>, Handler>)
+    explicit Handler(F &&f) : ptr_(std::make_unique<Model<std::decay_t<F>>>(std::forward<F>(f)))
+    {
+    }
+    void operator()(const E &e) { ptr_->call(e); }
+};
 
 class EventBus;
 class Subscription;
@@ -16,17 +49,18 @@ namespace detail
     class BusState;
 }
 
-class Subscription
+class [[nodiscard]] Subscription
 {
-public:
+private:
     std::type_index typeidx_ = std::type_index(typeid(void));
-    std::size_t subid_;
+    std::size_t subid_ = 0;
     std::weak_ptr<detail::BusState> bus_state_;
 
 public:
+    Subscription() = default;
     Subscription(std::type_index tid, std::size_t sid, std::weak_ptr<detail::BusState> state) noexcept
         : typeidx_(tid), subid_(sid), bus_state_(state) {}
-    ~Subscription() noexcept { release_subscription(); };
+    ~Subscription() noexcept { unsubscribe(); };
     Subscription(const Subscription &) = delete;
     Subscription(Subscription &&that) noexcept
         : typeidx_(std::exchange(that.typeidx_, std::type_index(typeid(void)))),
@@ -40,15 +74,14 @@ public:
         {
             return *this;
         }
-        release_subscription();
+        unsubscribe();
         typeidx_ = std::exchange(that.typeidx_, std::type_index(typeid(void)));
         subid_ = std::exchange(that.subid_, 0);
         bus_state_ = std::exchange(that.bus_state_, {});
         return *this;
     }
 
-private:
-    void release_subscription();
+    void unsubscribe();
 };
 
 class ChannelBase
@@ -66,10 +99,12 @@ public:
     {
         size_t subid_ = 0;
         std::function<void(const E &)> fn_;
+        // Handler<E> handler_;
         std::atomic<bool> active_ = true;
 
     public:
         Sub(size_t s, std::function<void(const E &)> fn) : subid_(s), fn_(std::move(fn)) {}
+        // Sub(size_t s, std::function<void(const E &)> &&fn) : subid_(s), fn_(std::forward<std::function<void(const E &)>>(fn)) {}
         ~Sub() = default;
         Sub(const Sub &) = delete;
         Sub(Sub &&) = delete;
@@ -85,9 +120,9 @@ private:
 public:
     ~Channel() = default;
 
-    static size_t publish_snapshot(std::vector<std::shared_ptr<Sub>> snapshot, const E &event)
+    static size_t publish_snapshot(const std::vector<std::shared_ptr<Sub>> &snapshot, const E &event)
     {
-        size_t count;
+        size_t count = 0;
         for (auto &sub : snapshot)
         {
             if (sub->active_.load())
@@ -215,12 +250,15 @@ public:
         return Channel<E2>::publish_snapshot(subs_snapshot, event);
     };
 };
-void Subscription::release_subscription()
+void Subscription::unsubscribe()
 {
     if (auto state = bus_state_.lock())
     {
         state->unsubscribe(typeidx_, subid_);
     }
+    typeidx_ = std::type_index(typeid(void));
+    subid_ = 0;
+    bus_state_.reset();
 }
 
 struct EventLogin
@@ -238,38 +276,52 @@ struct EventLogout
     std::chrono::system_clock::time_point login_time;
 };
 
+void session_function(EventBus &bus, size_t count)
+{
+    auto tid = std::this_thread::get_id();
+    for (size_t i = 0; i < count; i++)
+    {
+        std::stringstream ss;
+        ss << tid << ":" << i;
+        bus.publish<EventLogin>(EventLogin{i, ss.str(), "admin", std::chrono::system_clock::now()});
+        bus.publish<EventLogout>(EventLogout{i, ss.str(), std::chrono::system_clock::now()});
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+}
 int main()
 {
     EventBus bus;
+    auto sub1 = bus.subscribe<EventLogin>([](const EventLogin &e)
+                                          { std::cout << "User login, "
+                                                      << "uid=" << e.uid << ", uname=" << e.uname
+                                                      << ", client_type=" << e.client_type
+                                                      << ", login_time="
+                                                      << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time)
+                                                      << std::endl; });
+    auto sub2 = bus.subscribe<EventLogout>([](const EventLogout &e)
+                                           { std::cout << "User logout, "
+                                                       << "uid=" << e.uid << ", uname=" << e.uname
+                                                       << ", login_time="
+                                                       << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time)
+                                                       << std::endl; });
+    auto sub3 = bus.subscribe<EventLogin>([](const EventLogin &e)
+                                          { std::cout << "User " << e.uname << " login" << std::endl; });
+
+    auto sub4 = bus.subscribe<EventLogout>([](const EventLogout &e)
+                                           { std::cout << "User " << e.uname
+                                                       << " logout, live time "
+                                                       << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - e.login_time)
+                                                       << std::endl; });
+
+    std::vector<std::thread> sessions;
+    for (size_t i = 0; i < 10; i++)
     {
-        auto sub1 = bus.subscribe<EventLogin>([](const EventLogin &e)
-                                              { std::cout << "User login, "
-                                                          << "uid=" << e.uid << ", uname=" << e.uname
-                                                          << ", client_type=" << e.client_type
-                                                          << ", login_time="
-                                                          << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time)
-                                                          << std::endl; });
-        auto sub2 = bus.subscribe<EventLogout>([](const EventLogout &e)
-                                               { std::cout << "User logout, "
-                                                           << "uid=" << e.uid << ", uname=" << e.uname
-                                                           << ", login_time="
-                                                           << std::format("{:%Y-%m-%d %H:%M:%S}", e.login_time)
-                                                           << std::endl; });
-        auto sub3 = bus.subscribe<EventLogin>([](const EventLogin &e)
-                                              { std::cout << "User " << e.uname << " login" << std::endl; });
-
-        auto sub4 = bus.subscribe<EventLogout>([](const EventLogout &e)
-                                               { std::cout << "User " << e.uname
-                                                           << " logout, live time "
-                                                           << std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now() - e.login_time)
-                                                           << std::endl; });
-
-        bus.publish<EventLogin>(EventLogin{100, "user 01", "operator", std::chrono::system_clock::now()});
-        bus.publish<EventLogin>(EventLogin{102, "user 02", "admin", std::chrono::system_clock::now()});
-
-        bus.publish<EventLogout>(EventLogout{100, "user 01", std::chrono::system_clock::now()});
-        bus.publish<EventLogout>(EventLogout{102, "user 02", std::chrono::system_clock::now()});
+        sessions.emplace_back(session_function, std::ref(bus), 100);
     }
 
+    for (auto &ss : sessions)
+    {
+        ss.join();
+    }
     return 0;
 }
