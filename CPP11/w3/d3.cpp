@@ -7,23 +7,29 @@
 #include <format>
 #include <utility>
 #include <atomic>
+#include <mutex>
+
 class EventBus;
-class EventBusState;
+class Subscription;
+namespace detail
+{
+    class BusState;
+}
 
 class Subscription
 {
 public:
-    std::type_index typeid_ = std::type_index(typeid(void));
+    std::type_index typeidx_ = std::type_index(typeid(void));
     std::size_t subid_;
-    std::weak_ptr<EventBusState> bus_state_;
+    std::weak_ptr<detail::BusState> bus_state_;
 
 public:
-    Subscription(std::type_index tid, std::size_t sid, std::weak_ptr<EventBusState> state) noexcept
-        : typeid_(tid), subid_(sid), bus_state_(state) {}
+    Subscription(std::type_index tid, std::size_t sid, std::weak_ptr<detail::BusState> state) noexcept
+        : typeidx_(tid), subid_(sid), bus_state_(state) {}
     ~Subscription() noexcept { release_subscription(); };
     Subscription(const Subscription &) = delete;
     Subscription(Subscription &&that) noexcept
-        : typeid_(std::exchange(that.typeid_, std::type_index(typeid(void)))),
+        : typeidx_(std::exchange(that.typeidx_, std::type_index(typeid(void)))),
           subid_(std::exchange(that.subid_, 0)), bus_state_(std::exchange(that.bus_state_, {}))
     {
     }
@@ -35,7 +41,7 @@ public:
             return *this;
         }
         release_subscription();
-        typeid_ = std::exchange(that.typeid_, std::type_index(typeid(void)));
+        typeidx_ = std::exchange(that.typeidx_, std::type_index(typeid(void)));
         subid_ = std::exchange(that.subid_, 0);
         bus_state_ = std::exchange(that.bus_state_, {});
         return *this;
@@ -55,6 +61,7 @@ public:
 template <class E>
 class Channel : public ChannelBase
 {
+public:
     struct Sub
     {
         size_t subid_ = 0;
@@ -63,7 +70,6 @@ class Channel : public ChannelBase
 
     public:
         Sub(size_t s, std::function<void(const E &)> fn) : subid_(s), fn_(std::move(fn)) {}
-        Sub() = default;
         ~Sub() = default;
         Sub(const Sub &) = delete;
         Sub(Sub &&) = delete;
@@ -78,6 +84,26 @@ private:
 
 public:
     ~Channel() = default;
+
+    static size_t publish_snapshot(std::vector<std::shared_ptr<Sub>> snapshot, const E &event)
+    {
+        size_t count;
+        for (auto &sub : snapshot)
+        {
+            if (sub->active_.load())
+            {
+                sub->fn_(event);
+                ++count;
+            }
+        }
+        return count;
+    }
+
+    std::vector<std::shared_ptr<Sub>> snapshot()
+    {
+        return subs_;
+    }
+
     size_t add(std::function<void(const E &)> sub)
     {
         subs_.emplace_back(std::make_shared<Sub>(++next_id, std::move(sub)));
@@ -92,7 +118,7 @@ public:
         if (iter != subs_.end())
         {
             auto dead = *iter;
-            (*iter)->active_ = false;
+            (*iter)->active_.store(false);
             subs_.erase(iter);
             std::cout << channel_type << ":" << id << " unsubscribed." << std::endl;
             return dead;
@@ -102,78 +128,98 @@ public:
             return nullptr;
         }
     }
-    size_t publish(const E &event)
-    {
-        size_t count = 0;
-        auto snapshot = subs_;
-        for (auto &sub : snapshot)
-        {
-            if (sub->active_.load())
-            {
-                sub->fn_(event);
-                count++;
-            }
-        }
-        return count;
-    }
 };
 
-class EventBusState
+namespace detail
 {
-public:
-    std::unordered_map<std::type_index, std::shared_ptr<ChannelBase>> channels_;
+    class BusState;
+    class BusStateScopeLock;
 
-public:
-    void unsubscribe(const Subscription &sub)
+    class BusState
     {
-        auto channel_iter = channels_.find(sub.typeid_);
-        if (channel_iter == channels_.end())
+        friend class ::EventBus;
+
+    private:
+        std::unordered_map<std::type_index, std::shared_ptr<ChannelBase>> channels_;
+
+        std::mutex mtx_;
+
+    public:
+        void unsubscribe(std::type_index typeidx, size_t subid)
         {
-            return;
+            std::shared_ptr<void> dead;
+            {
+
+                std::scoped_lock<std::mutex> lock(mtx_);
+
+                auto channel_iter = channels_.find(typeidx);
+                if (channel_iter == channels_.end())
+                {
+                    return;
+                }
+                dead = channel_iter->second->remove(subid);
+            }
         }
-        auto dead = channel_iter->second->remove(sub.subid_);
-    }
+        void lock()
+        {
+            mtx_.lock();
+        }
+        void unlock()
+        {
+            mtx_.unlock();
+        }
+    };
 };
 class EventBus
 {
 private:
-    std::shared_ptr<EventBusState> state_;
+    std::shared_ptr<detail::BusState> state_;
 
 public:
-    EventBus() { state_ = std::make_shared<EventBusState>(); }
+    EventBus() { state_ = std::make_shared<detail::BusState>(); }
     ~EventBus() { state_.reset(); }
     template <class E, class E2 = std::remove_cv_t<E>>
     Subscription subscribe(std::function<void(const E &)> handle_fn)
     {
         auto tid = std::type_index(typeid(E2));
-        auto iter = state_->channels_.find(tid);
-        if (iter == state_->channels_.end())
+        size_t subid = 0;
         {
-            state_->channels_.emplace(tid, std::make_shared<Channel<E2>>());
+            std::scoped_lock<detail::BusState> lock(*state_);
+            auto iter = state_->channels_.find(tid);
+            if (iter == state_->channels_.end())
+            {
+                state_->channels_.emplace(tid, std::make_shared<Channel<E2>>());
+            }
+            auto channel = std::static_pointer_cast<Channel<E2>>(state_->channels_.at(tid));
+            subid = channel->add(std::move(handle_fn));
         }
-        auto c = std::static_pointer_cast<Channel<E2>>(state_->channels_.at(tid));
-        return Subscription(tid, c->add(std::move(handle_fn)), std::weak_ptr<EventBusState>(state_));
+        return Subscription(tid, subid, std::weak_ptr<detail::BusState>(state_));
     }
     template <class E, class E2 = std::remove_cv_t<E>>
     size_t publish(const E &event)
     {
         auto tid = std::type_index(typeid(E2));
-        auto iter = state_->channels_.find(tid);
-        if (iter == state_->channels_.end())
+        std::vector<std::shared_ptr<typename Channel<E2>::Sub>> subs_snapshot;
         {
-            std::cout << "no subscription for type id " << tid.name() << std::endl;
-            return 0;
-        }
-        auto c = std::static_pointer_cast<Channel<E2>>(iter->second);
-        return c->publish(event);
-    }
-};
+            std::scoped_lock<detail::BusState> lock(*state_);
 
+            auto iter = state_->channels_.find(tid);
+            if (iter == state_->channels_.end())
+            {
+                std::cout << "no subscription for type id " << tid.name() << std::endl;
+                return 0;
+            }
+            auto c = std::static_pointer_cast<Channel<E2>>(iter->second);
+            subs_snapshot = c->snapshot();
+        }
+        return Channel<E2>::publish_snapshot(subs_snapshot, event);
+    };
+};
 void Subscription::release_subscription()
 {
     if (auto state = bus_state_.lock())
     {
-        state->unsubscribe(*this);
+        state->unsubscribe(typeidx_, subid_);
     }
 }
 
