@@ -5,11 +5,14 @@
 #include <cassert>
 #include <sstream>
 #include <iostream>
-
+#include <optional>
 struct EntityHandle
 {
     size_t sparse_idx;
     uint32_t sparse_val;
+
+public:
+    auto operator<=>(const EntityHandle &) const = default;
 };
 template <class T>
 class EntityManager
@@ -34,8 +37,8 @@ public:
     {
         return (gen << 20) | dense_idx;
     }
-    uint32_t gen(uint32_t sparse_idx) { return (sparse_idx & GENERATION_MASK) >> 20; }
-    uint32_t idx(uint32_t sparse_idx) { return sparse_idx & INDEX_MASK; }
+    constexpr uint32_t gen(uint32_t sparse_idx) { return (sparse_idx & GENERATION_MASK) >> 20; }
+    constexpr uint32_t idx(uint32_t sparse_idx) { return sparse_idx & INDEX_MASK; }
 
     EntityHandle insert(T &&t)
     {
@@ -64,13 +67,19 @@ public:
         return handle;
     }
 
-    T &get(const EntityHandle &handle)
+    std::optional<std::reference_wrapper<T>> get(const EntityHandle &handle)
     {
         assert(handle.sparse_idx < sparse.size());
-        assert(handle.sparse_val == sparse[handle.sparse_idx]);
+        if (handle.sparse_idx >= sparse.size() || handle.sparse_val != sparse[handle.sparse_idx])
+        {
+            return std::nullopt;
+        }
         auto dense_idx = idx(sparse[handle.sparse_idx]);
-        assert(dense_idx < dense.size());
-        return dense[dense_idx];
+        if (dense_idx >= dense.size())
+        {
+            return std::nullopt;
+        }
+        return std::ref(dense[dense_idx]);
     }
     void erase(EntityHandle &&handle)
     {
@@ -79,9 +88,10 @@ public:
         auto dense_idx = idx(sparse[handle.sparse_idx]);
         assert(dense_idx < dense.size());
 
-        std::exchange(dense.back(), dense[dense_idx]);
+        std::swap(dense.back(), dense[dense_idx]);
         dense.pop_back();
-        std::exchange(dense_to_sparse.back(), dense_to_sparse[dense_idx]);
+        sparse[dense_to_sparse.back()] = sparse[dense_to_sparse[dense_idx]];
+        std::swap(dense_to_sparse.back(), dense_to_sparse[dense_idx]);
         dense_to_sparse.pop_back();
 
         sparse[dense_to_sparse[dense_idx]] = sparse_val(gen(sparse[dense_to_sparse[dense_idx]]), dense_idx);
@@ -149,7 +159,15 @@ int main()
     std::cout << em.dump() << std::endl;
 
     auto h4 = em.insert(4.5);
-    std::cout << em.get(h4) << std::endl;
+    auto v = em.get(h4);
+    if (v)
+    {
+        std::cout << v->get() << std::endl;
+    }
+    else
+    {
+        std::cout << "nil" << std::endl;
+    }
     std::cout << em.dump() << std::endl;
 
     return 0;
