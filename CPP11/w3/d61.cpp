@@ -8,7 +8,9 @@
 #include <cstdint>
 #include <sstream>
 #include <memory>
-
+#include <string>
+#include <exception>
+#include <charconv>
 struct Node;
 using NodePtr = std::unique_ptr<Node>;
 
@@ -51,12 +53,29 @@ public:
     const char *what() const noexcept override { return message.c_str(); }
 };
 
+class EvalException : public std::exception
+{
+    std::string message;
+
+public:
+    explicit EvalException(size_t pos, const std::string &error)
+    {
+        message = std::format("Failed to eval expression at {}, error {}", pos, error);
+    }
+    const char *what() const noexcept override { return message.c_str(); }
+};
+
 class Parser
 {
 public:
     NodePtrResult parse(std::string_view exp_str)
     {
-        return exp(exp_str);
+        auto result = exp(exp_str);
+        if (pos_ < exp_str.size())
+        {
+            throw ParseError(pos_, "not all expression processed");
+        }
+        return result;
     }
 
 private:
@@ -87,13 +106,14 @@ private:
         while (peek(exp_str) && (exp_str[pos_] == '+' || exp_str[pos_] == '-'))
         {
             auto op = exp_str[pos_];
+            auto op_pos = pos_;
             ++pos_;
             auto right = term(exp_str);
             if (!right)
             {
-                return left;
+                throw ParseError(op_pos, "Failed to find the right oprand");
             }
-            left = make_node(Binary{std::move(left.value()), std::move(right.value()), op, pos_});
+            left = make_node(Binary{std::move(left.value()), std::move(right.value()), op, op_pos});
         }
         return left;
     }
@@ -108,14 +128,14 @@ private:
         while (peek(exp_str) && (exp_str[pos_] == '*' || exp_str[pos_] == '/'))
         {
             auto op = exp_str[pos_];
+            auto op_pos = pos_;
             ++pos_;
             auto right = unary(exp_str);
             if (!right)
             {
-                return left;
+                throw ParseError(op_pos, "Failed to find the right oprand");
             }
-            left = make_node(Binary{std::move(left.value()), std::move(right.value()), op, pos_});
-            ++pos_;
+            left = make_node(Binary{std::move(left.value()), std::move(right.value()), op, op_pos});
         }
         return left;
     }
@@ -143,7 +163,7 @@ private:
     {
         if (!peek(exp_str))
         {
-            return nullptr;
+            return std::nullopt;
         }
 
         if (std::isdigit(exp_str[pos_]))
@@ -182,46 +202,43 @@ struct Overloaded : Funcs...
     using Funcs::operator()...;
 };
 
-NumberResult eval(NodePtr p)
+double eval(const Node &node)
 {
-    auto NumCalc = [](Number &n)
+    auto NumCalc = [](const Number &n)
     {
         return n.val;
     };
-    auto NegCalc = [](Neg &n)
+    auto NegCalc = [](const Neg &n)
     {
-        return -1 * eval(std::move(n.val)).value().val;
+        return -1 * eval(*n.val);
     };
-    auto BinaryCalc = [](Binary &b)
+    auto BinaryCalc = [](const Binary &b)
     {
         switch (b.op)
         {
         case '*':
-            return eval(std::move(b.left)).value().val * eval(std::move(b.right)).value().val;
+            return eval(*b.left) * eval(*b.right);
         case '/':
-            return eval(std::move(b.left)).value().val / eval(std::move(b.right))
-                                                             .value()
-                                                             .val;
+        {
+            auto right = eval(*b.right);
+            if (right == 0.0)
+            {
+                throw EvalException(b.pos, "divid by zero");
+            }
+            return eval(*b.left) / right;
+        }
         case '+':
-            return eval(std::move(b.left)).value().val + eval(std::move(b.right))
-                                                             .value()
-                                                             .val;
+            return eval(*b.left) + eval(*b.right);
         case '-':
-            return eval(std::move(b.left)).value().val - eval(std::move(b.right))
-                                                             .value()
-                                                             .val;
+            return eval(*b.left) - eval(*b.right);
         default:
             throw ParseError(b.pos, "unknown operator");
 
             break;
         }
     };
-    return Number{std::visit(Overloaded{
-                                 NumCalc,
-                                 NegCalc,
-                                 BinaryCalc},
-                             p->val),
-                  0};
+    return std::visit(Overloaded{NumCalc, NegCalc, BinaryCalc},
+                      node.val);
 }
 
 void calc(std::string_view exp_str)
@@ -230,7 +247,7 @@ void calc(std::string_view exp_str)
     auto ast = p.parse(exp_str);
     if (ast)
     {
-        std::cout << eval(std::move(ast.value())).value().val << std::endl;
+        std::cout << eval(*ast.value()) << std::endl;
     }
     else
     {
@@ -242,4 +259,23 @@ int main()
     calc("5 + 4 * 2 - 1");
     calc("5 + 4 * (2 - 1)");
     calc("5 + 4 * (2 - -1)");
+    calc("2*3-1");
+    calc("");
+    try
+    {
+        calc("5 +");
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
+
+    try
+    {
+        calc("5 / (3-3)");
+    }
+    catch (const std::exception &e)
+    {
+        std::cerr << e.what() << '\n';
+    }
 }
