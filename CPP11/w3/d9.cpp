@@ -5,65 +5,99 @@
 #include <optional>
 #include <sstream>
 #include <iostream>
+#include <memory>
+#include <thread>
+#include <mutex>
+#include <shared_mutex>
+#include <vector>
+#include <string_view>
 struct Response
 {
     std::string message;
-    uint32_t code;
+    uint64_t code;
 };
 
+struct StringHash
+{
+    using is_transparent = void;
+    size_t operator()(std::string_view s) const noexcept
+    {
+        return std::hash<std::string_view>{}(s);
+    }
+};
 template <class T>
 class LRU
 {
-    using Key = uint32_t;
+    using Key = std::string;
     struct Node
     {
-        T t;
+        std::shared_ptr<T> t;
         std::chrono::steady_clock::time_point time;
         Key k;
     };
+    std::shared_mutex mtx;
 
 private:
     std::list<Node> message_cache;
-    std::unordered_map<Key, typename std::list<Node>::iterator> search;
+    std::unordered_map<Key, typename std::list<Node>::iterator, StringHash, std::equal_to<>> search;
     const size_t cap = 1000;
     size_t ttl;
-    uint64_t key = 0;
+    uint64_t message_seq = 0;
 
 public:
     LRU(size_t n) : ttl(n) {}
-    void house_keeping()
+    void house_keeping_unsafe()
     {
+        std::list<Node> node_to_remove;
+
         auto it = message_cache.begin();
-        while (std::chrono::steady_clock::now() - it->time >= std::chrono::seconds(ttl))
+        while (it != message_cache.end() && std::chrono::steady_clock::now() - it->time >= std::chrono::seconds(ttl))
         {
             it++;
         }
 
-        std::list<Node> node_to_remove;
         node_to_remove.splice(node_to_remove.begin(), message_cache, message_cache.begin(), it);
-        for (auto n : node_to_remove)
+
+        if (message_cache.size() > cap)
+        {
+            node_to_remove.splice(
+                node_to_remove.end(),
+                message_cache,
+                message_cache.begin(),
+                std::next(message_cache.begin(), message_cache.size() - cap));
+        }
+
+        for (auto &n : node_to_remove)
         {
             search.erase(n.k);
         }
     }
+
     template <class U>
     Key push(U &&u)
     {
-        house_keeping();
-        if (message_cache.size() >= cap)
+        std::string ret;
         {
-            message_cache.erase(message_cache.begin(), std::next(message_cache.begin(), message_cache.size() - cap + 1));
+            std::scoped_lock<std::shared_mutex> lock(mtx);
+            Key this_key = std::to_string(message_seq);
+            message_cache.emplace_back(
+                std::make_shared<T>(std::forward<U>(u)),
+                std::chrono::steady_clock::now(),
+                this_key);
+            message_seq++;
+            search[this_key] = std::prev(message_cache.end());
+            ret = this_key;
+            house_keeping_unsafe();
         }
-        message_cache.emplace_back(
-            std::forward<U>(u),
-            std::chrono::steady_clock::now(),
-            ++key);
-        search[key] = std::prev(message_cache.end());
-        return key;
+        return ret;
     }
 
-    std::optional<T> get(Key k)
+    std::shared_ptr<T> get(std::string_view k)
     {
+
+        std::scoped_lock<std::shared_mutex> lock(mtx);
+        house_keeping_unsafe();
+
         auto it = search.find(k);
         if (it != search.end())
         {
@@ -71,30 +105,58 @@ public:
             it->second->time = std::chrono::steady_clock::now();
             return it->second->t;
         }
-        return std::nullopt;
+        return nullptr;
     }
+
     std::string view()
     {
         std::stringstream ss;
-        for (auto n : message_cache)
+        auto now_time = std::chrono::steady_clock::now();
         {
-            ss << "= " << n.t << " " << n.k << "\n";
+            std::shared_lock<std::shared_mutex> lock(mtx);
+            for (auto &n : message_cache)
+            {
+                if (now_time - n.time >= std::chrono::seconds(ttl))
+                {
+                    continue;
+                }
+                ss << "= " << n.t->message << " " << n.t->code << " " << n.k << "\n";
+            }
         }
+
         return ss.str();
     }
 };
 
 int main()
 {
-    LRU<int> cache(10);
-    auto key1 = cache.push(10);
-    auto key2 = cache.push(20);
-    auto key3 = cache.push(30);
-    std::cout << cache.view() << std::endl;
-    std::cout << cache.get(key1).value() << std::endl;
-    std::cout << cache.view() << std::endl;
-    std::cout << cache.get(key2).value() << std::endl;
-    std::cout << cache.view() << std::endl;
+    LRU<Response> cache(2);
+    std::vector<std::thread> threads;
+    for (size_t i = 0; i < 10; i++)
+    {
+        threads.emplace_back([i, &cache]()
+                             {
+            auto key1 = cache.push(Response{"message1", 100+i});
+            auto key2 = cache.push(Response{"message2", 200+i});
+            auto key3 = cache.push(Response{"message3", 300+i});
+            auto key4 = cache.push(Response{"message4", 400+i});
+            std::cout << cache.view() << std::endl;
+            if (auto p = cache.get(key1); p) {
+                std::cout <<p->message << std::endl;
+            }
+            std::cout << cache.view() << std::endl;
+            if (auto p = cache.get(key2); p) {
+                std::cout <<p->message << std::endl;
+            }
+            std::cout << cache.view() << std::endl; });
+    }
+
+    for (auto &t : threads)
+    {
+        t.join();
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(3));
+    std::cout << "expired: " << cache.view() << std::endl;
 
     return 0;
 }
