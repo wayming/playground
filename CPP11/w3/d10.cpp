@@ -5,6 +5,7 @@
 #include <vector>
 #include <condition_variable>
 #include <mutex>
+#include <iostream>
 
 using TASK_ID = uint64_t;
 struct Task
@@ -15,6 +16,9 @@ struct Task
     std::chrono::seconds every;
 };
 
+// std::string time_point_to_str(const std::chrono::time_point& time) {
+
+// }
 class Scheduler
 {
 private:
@@ -29,9 +33,10 @@ public:
     template <class T>
     TASK_ID after(uint32_t after, T &&t)
     {
+        std::scoped_lock<std::mutex> lock(mtx);
         auto this_id = ++next;
         task_queue.emplace(
-            Task{this_id, std::chrono::steady_clock::now() + std::chrono::seconds(after), std::forward<T>, 0});
+            Task{this_id, std::chrono::steady_clock::now() + std::chrono::seconds(after), std::forward<T>(t), std::chrono::seconds::zero()});
 
         return this_id;
     }
@@ -39,9 +44,10 @@ public:
     template <class T>
     TASK_ID every(uint32_t every, T &&t)
     {
+        std::scoped_lock<std::mutex> lock(mtx);
         auto this_id = ++next;
         task_queue.emplace(
-            Task{this_id, std::chrono::steady_clock::now() + std::chrono::seconds(every), std::forward<T>, every});
+            Task{this_id, std::chrono::steady_clock::now() + std::chrono::seconds(every), std::forward<T>(t), every});
 
         return this_id;
     }
@@ -50,27 +56,33 @@ public:
     {
         while (!stop.stop_requested() || !task_queue.empty())
         {
-            std::unique_lock<std::mutex> lock(mtx);
-            cv.wait(lock, stop, [this, &stop]()
-                    { return !task_queue.empty() || stop.stop_requested(); });
-
             Task task;
-            if (!task_queue.empty())
             {
-                task = std::move(task_queue.top());
-                task_queue.pop();
+                std::unique_lock<std::mutex> lock(mtx);
+                cv.wait(lock, stop, [this, &stop]()
+                        { return !task_queue.empty() || stop.stop_requested(); });
+
+                if (!task_queue.empty())
+                {
+                    task = std::move(task_queue.top());
+                    task_queue.pop();
+                }
             }
 
             auto seconds_to_run = std::chrono::duration_cast<std::chrono::seconds>(task.start_time - std::chrono::steady_clock::now());
             if (seconds_to_run > std::chrono::seconds::zero())
             {
+                std::cout << "sleep " << seconds_to_run << std::endl;
                 std::this_thread::sleep_for(seconds_to_run);
             }
             task.run();
             if (task.every > std::chrono::seconds::zero())
             {
                 task.start_time = std::chrono::steady_clock::now() + task.every;
-                task_queue.emplace(std::move(task));
+                {
+                    std::scoped_lock<std::mutex> lock(mtx);
+                    task_queue.emplace(std::move(task));
+                }
             }
         }
     }
@@ -78,5 +90,26 @@ public:
 
 int main()
 {
+    Scheduler sch;
+    auto worker = std::jthread([&sch](std::stop_token stop)
+                               { sch.run(stop); });
+
+    std::vector<std::thread> producers;
+    for (size_t i = 0; i < 10; i++)
+    {
+        producers.emplace_back([i, &sch]()
+                               { 
+                                auto tid = std::this_thread::get_id(); 
+                                sch.after(i, [tid]()
+                                           { std::cout << tid << " at " << std::chrono::system_clock::now() << std::endl; }); });
+    }
+
+    worker.get_stop_source().request_stop();
+
+    for (auto &t : producers)
+    {
+        t.join();
+    }
+    worker.join();
     return 0;
 }
