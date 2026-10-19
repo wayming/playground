@@ -141,7 +141,6 @@ public:
                             // print_steady_clock_time(task->start_time);
                             {
                                 std::scoped_lock<std::mutex> lock(mtx);
-                                task->iter = start_time_to_task.emplace(task->start_time, task);
                             }
                         }
                     }
