@@ -19,9 +19,9 @@ struct Stats
 };
 struct Record
 {
-    std::string ts;
-    std::string ip;
-    std::string url;
+    std::string_view ts;
+    std::string_view ip;
+    std::string_view url;
     uint32_t status;
     uint64_t ms;
 };
@@ -117,22 +117,48 @@ StatsMap parse2(const std::string &file)
     {
         throw std::runtime_error(std::format("Failed to open file {}", file));
     }
+    // auto recs = std::views::istream<Line>(fs) |
+    //             std::views::filter([](auto &&r)
+    //                                { return !r.s.empty() && r.s.front() != '#'; }) |
+    //             std::views::transform(parse_line) |
+    //             std::views::filter([](auto &&r)
+    //                                { return r && r.value().status >= 500; }) |
+    //             std::views::transform([](auto &&r)
+    //                                   { return r.value(); });
+    // std::ranges::for_each(recs, [&results](const Record &rec)
+    //                       {
+    //                           auto [p, inserted] =
+    //                               results.try_emplace(std::string(rec.url), std::make_shared<Stats>(1, rec.ms));
+    //                         if (!inserted) {
+    //                             p->second->count++;
+    //                             p->second->total += rec.ms;
+    //                         } });
     auto recs = std::views::istream<Line>(fs) |
-                std::views::filter([](auto &&r)
-                                   { return !r.s.empty() && r.s.front() != '#'; }) |
-                std::views::transform(parse_line) |
-                std::views::filter([](auto &&r)
-                                   { return r && r.value().status >= 500; }) |
-                std::views::transform([](auto &&r)
-                                      { return r.value(); });
-    std::ranges::for_each(recs, [&results](const Record &rec)
+                std::views::transform([&results](auto &&r) -> std::optional<std::pair<std::string, std::shared_ptr<Stats>>>
+                                      {
+                                  if (r.s.empty() || r.s.front() == '#')
+                                  {
+                                      return std::nullopt;
+                                  }
+                                  auto rec = parse_line(r);
+                                  if (!rec || rec.value().status < 500)
+                                  {
+                                      return std::nullopt;
+                                  }
+                                  return std::pair(std::string(rec.value().url), std::make_shared<Stats>(1, rec.value().ms)); });
+
+    std::ranges::for_each(recs, [&results](auto &&r)
                           {
-                              auto [p, inserted] =
-                                  results.try_emplace(rec.url, std::make_shared<Stats>(1, rec.ms));
-                            if (!inserted) {
-                                p->second->count++;
-                                p->second->total += rec.ms;
-                            } });
+        if (!r) {
+            return;
+        }
+        auto iter = results.find(r.value().first);
+        if (iter == results.end()) {
+            results.emplace(std::move(r.value()));
+        }else {
+            iter->second->count++;
+            iter->second->total += r.value().second->total;
+        } });
     return results;
 }
 
