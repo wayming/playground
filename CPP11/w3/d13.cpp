@@ -8,12 +8,10 @@ struct final_awaiter
 {
     bool await_ready() noexcept { return false; }
     template <class P>
-    void await_suspend(std::coroutine_handle<P> handle) noexcept
+    std::coroutine_handle<> await_suspend(std::coroutine_handle<P> handle) noexcept
     {
-        if (auto c = handle.promise().continuation)
-        {
-            c.resume();
-        }
+        auto c = handle.promise().continuation;
+        return c ? c : std::noop_coroutine();
     }
     void await_resume() const noexcept {}
 };
@@ -24,6 +22,8 @@ struct task
     {
         int val = 0;
         std::coroutine_handle<> continuation{};
+        std::exception_ptr exp{};
+
         task get_return_object()
         {
             return task{std::coroutine_handle<promise_type>::from_promise(*this)};
@@ -31,7 +31,15 @@ struct task
         std::suspend_always initial_suspend() noexcept { return std::suspend_always{}; }
         final_awaiter final_suspend() noexcept { return final_awaiter{}; }
         void return_value(int v) { val = v; }
-        void unhandled_exception() { std::terminate(); }
+        void unhandled_exception() { exp = std::current_exception(); }
+        int result()
+        {
+            if (exp)
+            {
+                std::rethrow_exception(exp);
+            }
+            return val;
+        }
     };
 
     std::coroutine_handle<promise_type> handle;
@@ -54,12 +62,12 @@ struct task
         {
             std::coroutine_handle<promise_type> handle; // copy from task coroutine handle
             bool await_ready() { return handle.done(); }
-            void await_suspend(std::coroutine_handle<> caller)
+            std::coroutine_handle<promise_type> await_suspend(std::coroutine_handle<> caller)
             {
                 handle.promise().continuation = caller;
-                handle.resume();
+                return handle;
             }
-            int await_resume() const noexcept { return handle.promise().val; }
+            int await_resume() const { return handle.promise().result(); }
         };
         return awaiter{handle};
     }
