@@ -17,9 +17,13 @@ private:
     T *tdata;
     size_t size;
     size_t cap;
-    static void reloacte(T *src, size_t n, T *dest)
+    static void reloacte(T *src, size_t n, T *dest) noexcept(std::is_trivially_copyable_v<T> || std::is_nothrow_move_constructible_v<T>)
     {
-        if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_trivially_constructible_v<T>)
+        if constexpr (std::is_trivially_copyable_v<T>)
+        {
+            std::memcpy(static_cast<void *>(dest), static_cast<void *>(src), n * sizeof(T));
+        }
+        else if constexpr (std::is_nothrow_move_constructible_v<T> || !std::is_copy_constructible_v<T>)
         {
             std::uninitialized_move_n(src, n, dest);
         }
@@ -95,7 +99,10 @@ public:
         auto new_data = std::allocator<T>{}.allocate(new_cap);
         try
         {
-            SmallVector::reloacte(tdata, size, new_data);
+            if (size > 0)
+            {
+                SmallVector::reloacte(tdata, size, new_data);
+            }
         }
         catch (const std::exception &e)
         {
