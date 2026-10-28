@@ -38,33 +38,104 @@ public:
     ~SmallVector()
     {
         clear();
+        release_heap();
     }
-    SmallVector(const SmallVector &other) : size_(other.size_)
+    SmallVector(const SmallVector &other)
     {
         if (size_ <= N)
         {
-            std::uninitialized_copy_n(other.tdata, size_, inline_ptr());
+            if constexpr (std::is_trivially_copyable_v<T>)
+            {
+                std::memcpy(inline_ptr(), other.tdata, size_ * sizeof(T));
+            }
+            else
+                std::uninitialized_copy_n(other.tdata, size_, inline_ptr());
             tdata = inline_ptr();
             cap_ = N;
+            size_ = other.size_;
         }
         else
         {
-            tdata = std::allocator<T>{}.allocate(size_);
+            auto new_data = std::allocator<T>{}.allocate(size_);
             try
             {
-                std::uninitialized_copy_n(other.tdata, size_, tdata);
+                if constexpr (std::is_trivially_copyable_v<T>)
+                {
+                    std::memcpy(new_data, other.tdata, size_ * sizeof(T));
+                }
+                else
+                    std::uninitialized_copy_n(other.tdata, size_, new_data);
             }
             catch (...)
             {
                 std::allocator<T>{}.deallocate(tdata, size_);
                 throw;
             }
+            tdata = new_data;
             cap_ = size_;
+            size_ = other.size_;
         }
     };
-    SmallVector(SmallVector &&other) = delete;
-    SmallVector operator=(const SmallVector &other) = delete;
-    SmallVector operator=(SmallVector &&other) = delete;
+    SmallVector(SmallVector &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
+    {
+        move_from(std::move(other));
+    };
+    SmallVector &operator=(const SmallVector &other)
+    {
+        if (this == &other)
+            return *this;
+        SmallVector tmp(other);
+        std::swap(*this, tmp);
+        return *this;
+    }
+
+    SmallVector &operator=(SmallVector &&other) noexcept(std::is_nothrow_move_constructible_v<T> && std::is_nothrow_destructible_v<T>)
+    {
+        if (this == &other)
+        {
+            return *this;
+        }
+
+        if (is_inline())
+        {
+            std::destroy(begin(), end());
+        }
+        else
+        {
+            clear();
+            release_heap();
+        }
+        move_from(std::move(other));
+        return *this;
+    }
+
+    void move_from(SmallVector &&other)
+    {
+        if (other.is_inline())
+        {
+            if constexpr (std::is_trivially_copyable_v<T>)
+            {
+                memcpy(inline_ptr(), other.tdata, other.size_ * sizeof(T));
+            }
+            else
+            {
+                std::uninitialized_move_n(other.tdata, other.size_, inline_ptr());
+            }
+            tdata = inline_ptr();
+            cap_ = N;
+            size_ = other.size_;
+            other.clear();
+        }
+        else
+        {
+            tdata = other.tdata;
+            cap_ = other.cap_;
+            size_ = other.size_;
+            other.tdata = other.inline_ptr();
+            other.cap_ = N;
+            other.size_ = 0;
+        }
+    };
 
     T *inline_ptr() { return reinterpret_cast<T *>(&buffer); }
     const T *inline_ptr() const { return reinterpret_cast<const T *>(&buffer); }
@@ -166,7 +237,6 @@ public:
     void clear()
     {
         std::destroy(begin(), end());
-        release_heap();
         size_ = 0;
     }
 };
