@@ -4,6 +4,7 @@
 #include <memory>
 #include <numbers>
 #include <iostream>
+#include <utility>
 
 struct Shape
 {
@@ -17,22 +18,44 @@ class ShapeFactory
 {
 
 private:
-    std::unordered_map<std::string, ShapeCreator> register_;
+    static std::unordered_map<std::string, ShapeCreator> &registry()
+    {
+        static std::unordered_map<std::string, ShapeCreator> register_;
+        return register_;
+    }
 
 public:
-    bool reg(std::string name, ShapeCreator creator)
+    template <std::derived_from<Shape> T>
+        requires std::constructible_from<T, double>
+    class Registar
     {
-        return register_.emplace(std::move(name), std::move(creator)).second;
+    public:
+        Registar(std::string name, std::in_place_type_t<T>)
+        {
+            auto creator = [](double d)
+            { return std::make_unique<T>(d); };
+            ShapeFactory::reg(std::move(name), std::move(creator));
+        }
+    };
+    static bool reg(std::string name, ShapeCreator creator)
+    {
+        return ShapeFactory::registry().emplace(std::move(name), std::move(creator)).second;
     }
-    std::unique_ptr<Shape> create_shape(const std::string &name, double x)
+    static std::unique_ptr<Shape> create_shape(const std::string &name, double x)
     {
-        auto find = register_.find(name);
-        if (find != register_.end())
+        auto find = ShapeFactory::registry().find(name);
+        if (find != ShapeFactory::registry().end())
         {
             return find->second(x);
         }
         return nullptr;
     }
+};
+
+template <class T>
+struct AutoRegister
+{
+    static const inline ShapeFactory::Registar registar{T::name, std::in_place_type<T>};
 };
 
 struct Circle final : Shape
@@ -41,17 +64,16 @@ private:
     double r_;
 
 public:
+    static constexpr std::string name{"Circle"};
     explicit Circle(double d) : r_(d) {}
     double area() const override { return std::numbers::pi * r_ * r_; }
 };
+template struct AutoRegister<Circle>;
 
 int main()
 {
-    ShapeFactory fac;
-    fac.reg("Circle", [](double d) -> std::unique_ptr<Shape>
-            { return std::make_unique<Circle>(d); });
-    auto circle1 = fac.create_shape("Circle", 2.0);
+    auto circle1 = ShapeFactory::create_shape("Circle", 2.0);
     std::cout << circle1->area() << std::endl;
-    std::cout << (fac.create_shape("CircleX", 2.0) ? "found" : "not found") << std::endl;
+    std::cout << (ShapeFactory::create_shape("CircleX", 2.0) ? "found" : "not found") << std::endl;
     return 0;
 }
