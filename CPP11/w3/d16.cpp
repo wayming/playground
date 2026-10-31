@@ -8,7 +8,7 @@ template <class T, size_t X, size_t Y>
 class Matrix
 {
 public:
-    std::array<std::array<T, Y>, X> mt;
+    std::array<T, X * Y> mt;
 
     template <size_t Z>
     Matrix<T, X, Z> operator*(const Matrix<T, Y, Z> &other)
@@ -17,18 +17,14 @@ public:
 
         for (size_t m = 0; m < X; m++)
         {
-            for (size_t n = 0; n < Y; n++)
+            for (size_t n = 0; n < Z; n++)
             {
-                for (size_t o = 0; o < Z; o++)
+                T sum = 0;
+                for (size_t o = 0; o < Y; o++)
                 {
-                    T sum = 0;
-
-                    for (size_t p = 0; p < X; p++)
-                    {
-                        sum += mt[m][n] * other.mt[p][o];
-                    }
-                    res.mt[m][o] = sum;
+                    sum += mt[m * Y + o] * other.mt[o * Z + n];
                 }
+                res.mt[m * Z + n] = sum;
             }
         }
         return res;
@@ -46,7 +42,7 @@ public:
             {
                 if (!first)
                     ss << ", ";
-                ss << mt[m][n];
+                ss << mt[m * Y + n];
                 first = false;
             }
             ss << "]" << std::endl;
@@ -59,8 +55,10 @@ public:
 
 int main()
 {
-    Matrix<int, 2, 3> a{{std::array<int, 3>{1, 2, 3}, std::array<int, 3>{4, 5, 6}}};
-    Matrix<int, 3, 4> b{{std::array<int, 4>{1, 2, 3, 4}, std::array<int, 4>{3, 4, 5, 6}, std::array<int, 4>{5, 6, 7, 8}}};
+    Matrix<int, 2, 3>
+        a{1, 2, 3, 4, 5, 6};
+
+    Matrix<int, 3, 4> b{1, 2, 3, 4, 3, 4, 5, 6, 5, 6, 7, 8};
     std::cout << (a * b).show() << std::endl;
     return 0;
 }
