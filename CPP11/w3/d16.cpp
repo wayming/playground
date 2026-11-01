@@ -3,13 +3,22 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <type_traits>
+#include <format>
 
 template <class T, size_t X, size_t Y>
 class Matrix
 {
 public:
     std::array<T, X * Y> mt;
-
+    Matrix() = default;
+    Matrix(std::initializer_list<T> elements)
+    {
+        if (elements.size() != X * Y)
+            throw std::runtime_error(std::format(
+                "invalid number of elements, {} expected, {} got", X * Y, elements.size()));
+        std::move(elements.begin(), elements.end(), mt.begin());
+    }
     template <size_t Z>
     Matrix<T, X, Z> operator*(const Matrix<T, Y, Z> &other)
     {
@@ -29,6 +38,9 @@ public:
         }
         return res;
     }
+
+    T &operator()(size_t x, size_t y) { return mt[x * X + y]; }
+    const T &operator()(size_t x, size_t y) const { return mt[x * X + y]; }
 
     std::string show()
     {
@@ -55,8 +67,7 @@ public:
 
 int main()
 {
-    Matrix<int, 2, 3>
-        a{1, 2, 3, 4, 5, 6};
+    Matrix<int, 2, 3> a{1, 2, 3, 4, 5, 6};
 
     Matrix<int, 3, 4> b{1, 2, 3, 4, 3, 4, 5, 6, 5, 6, 7, 8};
     std::cout << (a * b).show() << std::endl;
