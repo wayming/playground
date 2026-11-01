@@ -9,10 +9,12 @@
 template <class T, size_t X, size_t Y>
 class Matrix
 {
-public:
+private:
     std::array<T, X * Y> mt;
-    Matrix() = default;
-    Matrix(std::initializer_list<T> elements)
+
+public:
+    constexpr Matrix() = default;
+    constexpr Matrix(std::initializer_list<T> elements)
     {
         if (elements.size() != X * Y)
             throw std::runtime_error(std::format(
@@ -20,7 +22,7 @@ public:
         std::move(elements.begin(), elements.end(), mt.begin());
     }
     template <size_t Z>
-    Matrix<T, X, Z> operator*(const Matrix<T, Y, Z> &other)
+    constexpr Matrix<T, X, Z> operator*(const Matrix<T, Y, Z> &other) const
     {
         Matrix<T, X, Z> res;
 
@@ -31,17 +33,21 @@ public:
                 T sum = 0;
                 for (size_t o = 0; o < Y; o++)
                 {
-                    sum += mt[m * Y + o] * other.mt[o * Z + n];
+                    sum += (*this)(m, o) * other(o, n);
                 }
-                res.mt[m * Z + n] = sum;
+                res(m, n) = sum;
             }
         }
         return res;
     }
 
-    T &operator()(size_t x, size_t y) { return mt[x * X + y]; }
-    const T &operator()(size_t x, size_t y) const { return mt[x * X + y]; }
+    constexpr T &operator()(size_t x, size_t y) { return mt[x * Y + y]; }
+    constexpr const T &operator()(size_t x, size_t y) const { return mt[x * Y + y]; }
 
+    constexpr bool operator==(const Matrix<T, X, Y> &other) const
+    {
+        return mt == other.mt;
+    }
     std::string show()
     {
         std::stringstream ss;
@@ -54,7 +60,7 @@ public:
             {
                 if (!first)
                     ss << ", ";
-                ss << mt[m * Y + n];
+                ss << (*this)(m, n);
                 first = false;
             }
             ss << "]" << std::endl;
@@ -64,12 +70,15 @@ public:
         return ss.str();
     }
 };
-
+template <class X, class Y>
+concept CanMultiply = requires(X x, Y y) { x * y; };
 int main()
 {
-    Matrix<int, 2, 3> a{1, 2, 3, 4, 5, 6};
+    constexpr Matrix<int, 2, 3> a{1, 2, 3, 4, 5, 6};
 
-    Matrix<int, 3, 4> b{1, 2, 3, 4, 3, 4, 5, 6, 5, 6, 7, 8};
-    std::cout << (a * b).show() << std::endl;
+    constexpr Matrix<int, 3, 4> b{1, 2, 3, 4, 3, 4, 5, 6, 5, 6, 7, 8};
+    constexpr Matrix<int, 2, 4> c{22, 28, 34, 40, 49, 64, 79, 94};
+    static_assert((a * b) == c);
+    static_assert(CanMultiply<Matrix<int, 2, 3>, Matrix<int, 3, 14>>);
     return 0;
 }
