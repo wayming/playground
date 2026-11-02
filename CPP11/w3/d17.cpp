@@ -15,10 +15,7 @@ public:
     {
         return Quantity(left.value() - right.value());
     }
-    friend constexpr bool operator==(const Quantity<Tag> left, const Quantity<Tag> &right)
-    {
-        return left.value() == right.value();
-    }
+    friend constexpr auto operator<=>(const Quantity<Tag> &left, const Quantity<Tag> &right) = default;
 };
 
 int main()
