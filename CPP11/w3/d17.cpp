@@ -1,4 +1,4 @@
-template <class Tag>
+template <int M, int L>
 class Quantity
 {
 private:
@@ -7,15 +7,15 @@ private:
 public:
     constexpr explicit Quantity(double d) : v(d) {}
     constexpr double value() const { return v; }
-    friend constexpr Quantity<Tag> operator+(const Quantity<Tag> &left, const Quantity<Tag> &right)
+    friend constexpr Quantity<M, L> operator+(const Quantity<M, L> &left, const Quantity<M, L> &right)
     {
         return Quantity(left.value() + right.value());
     }
-    friend constexpr Quantity<Tag> operator-(const Quantity<Tag> left, const Quantity<Tag> &right)
+    friend constexpr Quantity<M, L> operator-(const Quantity<M, L> left, const Quantity<M, L> &right)
     {
         return Quantity(left.value() - right.value());
     }
-    friend constexpr auto operator<=>(const Quantity<Tag> &left, const Quantity<Tag> &right) = default;
+    friend constexpr auto operator<=>(const Quantity<M, L> &left, const Quantity<M, L> &right) = default;
 };
 struct MeterTag
 {
@@ -23,8 +23,8 @@ struct MeterTag
 struct SecondTag
 {
 };
-using Meters = Quantity<MeterTag>;
-using Seconds = Quantity<SecondTag>;
+using Meters = Quantity<1, 0>;
+using Seconds = Quantity<0, 1>;
 namespace MyLiteral
 {
     constexpr Meters operator""_m(long double d) { return Meters(static_cast<double>(d)); }
