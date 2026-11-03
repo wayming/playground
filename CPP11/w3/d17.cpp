@@ -68,7 +68,8 @@ namespace MyLiteral
     constexpr Seconds operator""_s(long double d) { return Seconds(static_cast<double>(d)); }
     constexpr Meters operator""_m(unsigned long long l) { return Meters(static_cast<double>(l)); }
     constexpr Seconds operator""_s(unsigned long long l) { return Seconds(static_cast<double>(l)); }
-
+    constexpr Meters operator""_km(long double d) { return Meters(static_cast<double>(d * 1000)); }
+    constexpr Meters operator""_km(unsigned long long l) { return Meters(static_cast<double>(l * 1000)); }
     template <int M1, int L1, int M2, int L2>
     constexpr Quantity<M1 - M2, L1 - L2> operator/(Quantity<M1, L1> m, Quantity<M2, L2> s)
     {
@@ -134,6 +135,8 @@ int main()
 
     std::unordered_map<UserId, std::string> users;
     users[UserId(1001)] = "user1";
+
+    static_assert(1_km == 1000_m);
 
     return 0;
 }
