@@ -55,7 +55,8 @@ public:
                         }
                         catch(...)
                         {
-                           throw std::logic_error("already started");
+                           done_pm.set_exception(std::current_exception());
+                           return;
                         }
                         
                         
@@ -89,33 +90,39 @@ public:
             }
         }
 
-        worker_ = std::jthread([this]() mutable
+        worker_ = std::jthread([this]()
                                {
                        
-                        std::string content; try
+                        std::string content; 
+                        try
                         {
                             content = Downloader::fetch(url_);
-                        }
+                        }                        
+                        catch(const std::exception& e)
+                        {
+                            std::cerr << "fetch failed, error: " << e.what()  << std::endl;
+                            return;
+                        } 
                         catch(...)
                         {
-                            throw std::logic_error("already started");
+                            std::cerr << "fetch failed" << std::endl;
+                            return;
                         }
                         
-                        
-                        std::exception_ptr first_cb_exception;
                         for (auto &c : callbacks_)
                         {
                             try
                             {
                                 c(content);
                             }
+                            catch(const std::exception& e)
+                            {
+                                std::cerr << "callback failed, error: " << e.what() << std::endl;
+                            } 
                             catch(...)
                             {
-                                if (!first_cb_exception) first_cb_exception = std::current_exception();
+                                std::cerr << "callback failed" << std::endl;
                             }
-                         }
-                         if (first_cb_exception) {
-                            throw first_cb_exception;
                          } });
     }
     static std::string fetch(const std::string &url)
@@ -132,7 +139,6 @@ struct Buffer
 };
 int main()
 {
-    Downloader d("www.thissite.com");
     auto counter = std::make_shared<std::atomic<int>>(0);
     auto buf = std::make_unique<Buffer>();
 
@@ -141,15 +147,20 @@ int main()
     auto done_pm = std::promise<bool>();
     auto done_fu = done_pm.get_future();
 
-    d.add([pm = std::move(buffer_pm), buf = std::move(buf)](const std::string &s) mutable
-          { buf->add(s); 
-        pm.set_value(std::move(buf)); });
-    d.add([counter](const std::string &s)
-          { (*counter)++; });
+    {
+        Downloader d("www.thissite.com");
 
-    // d.start(std::move(done_pm));
-    // done_fu.get();
-    d.start2();
+        d.add([pm = std::move(buffer_pm), buf = std::move(buf)](const std::string &s) mutable
+              { buf->add(s); 
+        pm.set_value(std::move(buf)); });
+        d.add([counter](const std::string &s)
+              { (*counter)++; });
+
+        // d.start(std::move(done_pm));
+        // done_fu.get();
+        d.start2();
+    }
+
     std::cout << *counter << std::endl;
 
     auto still_buf = buffer_fu.get();
