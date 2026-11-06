@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <iterator>
+#include <ranges>
 
 class Shape
 {
@@ -106,11 +107,48 @@ public:
         }
     }
 
+    template <std::derived_from<Shape> T, class... Args>
+    void emplace(Args &&...args)
+    {
+        shapes.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
+    }
+
+    void remove_at(size_t s)
+    {
+        if (s >= shapes.size())
+            throw std::range_error("invalid index specified");
+        shapes.erase(shapes.begin() + s);
+    }
+
+    size_t const size() const { return shapes.size(); }
+
     void areas() const
     {
         for (auto &s : shapes)
         {
             std::cout << s->area() << "\n";
+        }
+    }
+
+    void sort_by_areas()
+    {
+        std::ranges::sort(shapes, {}, &Shape::area);
+    }
+
+    size_t count_circles() const
+    {
+        return std::ranges::count_if(shapes.begin(), shapes.end(), [](const auto &ptr)
+                                     { return (dynamic_cast<const Circle *>(ptr.get()) != nullptr); });
+    }
+
+    template <class F>
+    void for_each_circle(F f) const
+    {
+        for (const auto &s : shapes)
+        {
+            auto c = dynamic_cast<const Circle *>(s.get());
+            if (c)
+                f(*c);
         }
     }
 };
@@ -122,8 +160,15 @@ int main()
         Scene s;
         s.add(std::make_unique<Circle>(2.0));
         s.add(std::make_unique<Rectangle>(5.0, 6.0));
+        s.emplace<Rectangle>(1.0, 2.0);
         s.areas();
         s2 = s;
     }
+    s2.sort_by_areas();
     s2.areas();
+    std::cout << s2.count_circles() << std::endl;
+
+    size_t counter = 0;
+    s2.for_each_circle([&counter](const Circle &c)
+                       { std::cout << "circle" << ++counter << ", area " << c.area() << std::endl; });
 }
