@@ -62,6 +62,37 @@ public:
         std::ranges::sort(shapes, {}, [this](const Shape &s)
                           { return area(s); });
     }
+
+    size_t count_circles() const
+    {
+        return static_cast<size_t>(std::ranges::count_if(shapes.begin(), shapes.end(), [](const Shape &s)
+                                                         { return std::holds_alternative<Circle>(s); }));
+    }
+
+    template <class F>
+    void remove_if(F f)
+    {
+        std::erase_if(shapes, std::move(f));
+    }
+
+    template <class... Ts>
+    struct overloaded : Ts...
+    {
+        using Ts::operator()...;
+    };
+    void describe() const
+    {
+        for (const auto &s : shapes)
+        {
+            std::visit(overloaded{[](const Circle &c)
+                                  { std::cout << "circle " << c.radius << std::endl; },
+                                  [](const Rectangle &r)
+                                  { std::cout << "rectangle " << r.width << " " << r.length << std::endl; }
+
+                       },
+                       s);
+        }
+    }
 };
 
 int main()
@@ -75,5 +106,14 @@ int main()
     s1.areas();
     s1.sort_by_area();
     s1.areas();
+    std::cout << s1.count_circles() << std::endl;
+    s1.describe();
+
+    auto s2 = s1;
+    s2.remove_if([](const Shape &s)
+                 { return std::holds_alternative<Circle>(s); });
+    s1.describe();
+    s2.describe();
+
     return 0;
 }
